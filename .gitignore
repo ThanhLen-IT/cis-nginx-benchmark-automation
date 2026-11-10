@@ -236,3 +236,10 @@ crash.log
 # Python
 __pycache__/
 *.pyc
+
+
+# Ansible & OS/Editor temp files
+*.retry
+.DS_Store
+*.swp
+*.swo
