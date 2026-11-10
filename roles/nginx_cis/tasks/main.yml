@@ -1,0 +1,23 @@
+---
+# Orchestrator for CIS NGINX Benchmark v3.0.0 role
+
+- name: "Section 1 | Installation & Software Updates (TV1)"
+  ansible.builtin.include_tasks: section_1_installation.yml
+
+- name: "Section 2 | Basic Configuration (TV1)"
+  ansible.builtin.include_tasks: section_2_configuration.yml
+
+- name: "Section 3 | Logging (TV2)"
+  ansible.builtin.include_tasks: section_3_logging.yml
+
+- name: "Section 4 | Encryption / TLS (TV2)"
+  ansible.builtin.include_tasks: section_4_tls.yml
+
+- name: "Section 5 | Request Controls & Browser Security Headers (TV3)"
+  ansible.builtin.include_tasks: section_5_request_controls.yml
+
+- name: "Deploy hardened site configuration"
+  ansible.builtin.include_tasks: deploy_site.yml
+
+- name: Flush handlers to validate and reload nginx
+  ansible.builtin.meta: flush_handlers
