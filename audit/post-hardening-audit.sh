@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# TODO (TV3 - feature/audit-headers): Script Post-Hardening Audit kiem tra 30 tieu chi CIS NGINX v3.0.0 (After Hardening)
+# Post-Hardening Audit (After Hardening) - 30 tieu chi CIS NGINX Benchmark v3.0.0 (TV3)
 set -euo pipefail
 
-echo "Post-hardening audit script placeholder - TODO (TV3)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# shellcheck source=audit/cis_audit_common.sh
+source "${SCRIPT_DIR}/cis_audit_common.sh"
+
+run_cis_audit "after" "${PROJECT_ROOT}"

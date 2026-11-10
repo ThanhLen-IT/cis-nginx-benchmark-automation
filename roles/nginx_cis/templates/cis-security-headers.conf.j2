@@ -1,1 +1,11 @@
-# TODO (TV3 - feature/audit-headers): CIS 5.3.1 (X-Content-Type-Options) & 5.3.3 (Referrer-Policy)
+# {{ ansible_managed }}
+# CIS NGINX Benchmark v3.0.0 - Section 5.3 Browser Security Headers (TV3)
+# Active globally via /etc/nginx/conf.d/*.conf (http {}).
+# Also safe to 'include /etc/nginx/conf.d/cis-security-headers.conf;' inside
+# server {} or location {} blocks that declare other add_header rules (e.g. HSTS).
+
+# CIS 5.3.1 - Prevent MIME-type sniffing across all HTTP status codes
+add_header X-Content-Type-Options "{{ nginx_x_content_type_options }}" always;
+
+# CIS 5.3.3 - Control Referrer leakage across origins
+add_header Referrer-Policy "{{ nginx_referrer_policy }}" always;

@@ -1,0 +1,31 @@
+CIS_ID,Group,Control,Status,Detail
+1.1.1,1. Installation,NGINX installed (>= 1.28.0),FAIL,Phien ban hien tai: nginx/1.24.0 (yeu cau >= 1.28.0)
+1.2.1,1. Installation,Trusted package manager repositories,PASS,Nguon tin cay: 3 repo
+1.2.2,1. Installation,Latest NGINX package installed,PASS,"Installed=1.24.0-2ubuntu7.19, Candidate=1.24.0-2ubuntu7.19"
+2.1.1,2. Configuration,Only required dynamic modules loaded,PASS,Khong nap dynamic module nao (0 load_module)
+2.2.1,2. Configuration,Non-privileged dedicated service account,PASS,"user=www-data, uid=33, groups=www-data, sudo_blocked=True"
+2.2.2,2. Configuration,Service account is locked,PASS,passwd -S www-data: trang thai=L
+2.2.3,2. Configuration,Service account has invalid shell,PASS,shell=/usr/sbin/nologin
+2.3.1,2. Configuration,Config owned by root:root,PASS,Tat ca thuoc root:root
+2.3.2,2. Configuration,Config permissions restricted (750/640),FAIL,"Vi pham: 7 thu muc, 14 tep (vd: /etc/nginx (755), /etc/nginx/sites-available (755), /etc/nginx/koi-utf (644), /etc/nginx/scgi_params (644))"
+2.3.3,2. Configuration,NGINX PID file secured,PASS,"/run/nginx.pid: uid=0, gid=0, mode=644"
+2.4.1,2. Configuration,Only authorized ports open,PASS,"Cong cau hinh=[80], cong dang nghe=[80]"
+2.4.2,2. Configuration,Reject unknown Host requests,FAIL,"default_server_444=False, https_reject=False, probe_invalid_http=200"
+2.4.3,2. Configuration,keepalive_timeout <= 10s (not 0),FAIL,keepalive_timeout=chua khai bao (mac dinh 75s)
+2.4.4,2. Configuration,send_timeout <= 10s (not 0),FAIL,send_timeout=chua khai bao (mac dinh 60s)
+2.5.1,2. Configuration,server_tokens set to off,FAIL,"server_tokens_off=False, HTTP Server header=['nginx/1.24.0 (Ubuntu)'] (code=200)"
+2.5.2,2. Configuration,Custom error/index hide NGINX,FAIL,"error_page=False, 404_leaks_nginx=True, stock_index=True"
+2.5.3,2. Configuration,Hidden file serving disabled,FAIL,"rule_location_hidden=False, probe_/.git/HEAD=404"
+3.1,3. Logging,Detailed access log format (JSON/custom),FAIL,"log_format=khong co, dang dung=mac dinh combined"
+3.2,3. Logging,Access logging enabled,PASS,"access_log=['http:/var/log/nginx/access.log'], global_off=False"
+3.3,3. Logging,Error log enabled (level info/notice),FAIL,error_log=['main:/var/log/nginx/error.log(default(error))']
+4.1.1,4. SSL/TLS,HTTP redirected to HTTPS,FAIL,"cfg_redirect=False, http_probe=200 loc=[]"
+4.1.3,4. SSL/TLS,Private key permissions <= 400,FAIL,Chua cau hinh ssl_certificate_key hoac file .key
+4.1.4,4. SSL/TLS,Only TLSv1.3 protocol enabled,FAIL,ssl_protocols=['TLSv1 TLSv1.1 TLSv1.2 TLSv1.3']
+4.1.5,4. SSL/TLS,Disable weak ciphers (TLS 1.3 only),FAIL,"TLSv1.3_exclusive=False, weak_ssl_ciphers=none"
+4.1.6,4. SSL/TLS,TLS 1.3 DH params (no ssl_dhparam),FAIL,"TLSv1.3_exclusive=False, ssl_dhparam_present=False"
+5.2.1,5. Request Controls/Headers,Client header/body/send timeouts (10-20s),FAIL,"client_header_timeout=unset(60s), client_body_timeout=unset(60s), send_timeout=unset(60s)"
+5.2.2,5. Request Controls/Headers,Maximum request body size defined,FAIL,client_max_body_size=unset (mac dinh 1m)
+5.2.3,5. Request Controls/Headers,large_client_header_buffers compliant,PASS,Chua khai bao tuong minh (dung mac dinh an toan 4 8k theo CIS v3.0.0)
+5.3.1,5. Request Controls/Headers,X-Content-Type-Options: nosniff always,FAIL,"cfg_always=False, live_200=False, live_404=False"
+5.3.3,5. Request Controls/Headers,Referrer-Policy header always,FAIL,"cfg_always=False, live_200=missing, live_404=missing"
