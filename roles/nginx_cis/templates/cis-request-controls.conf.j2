@@ -1,1 +1,18 @@
-# TODO (TV3 - feature/audit-headers): CIS 5.2.1 (timeouts), 5.2.2 (client_max_body_size), 5.2.3 (large_client_header_buffers)
+# {{ ansible_managed }}
+# CIS NGINX Benchmark v3.0.0 - Section 5.2 Request Controls (TV3)
+# Included inside http {} via /etc/nginx/conf.d/*.conf
+
+# CIS 5.2.1 - Timeout values for reading client header and body
+client_header_timeout {{ nginx_client_header_timeout }};
+client_body_timeout   {{ nginx_client_body_timeout }};
+{% if not (tv3_send_timeout_external | default(false) | bool) -%}
+send_timeout          {{ nginx_send_timeout }};
+{%- else -%}
+# send_timeout already configured in another NGINX config file (CIS 2.4.4)
+{%- endif %}
+
+# CIS 5.2.2 - Maximum request body size
+client_max_body_size  {{ nginx_client_max_body_size }};
+
+# CIS 5.2.3 - Maximum buffer size for URIs (CIS v3.0.0 safe baseline: 4 8k)
+large_client_header_buffers {{ nginx_large_client_header_buffers }};

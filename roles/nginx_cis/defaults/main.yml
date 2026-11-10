@@ -17,4 +17,18 @@ nginx_web_root: /var/www/html
 # Add logging & TLS defaults here
 
 # --- Section 5 (TV3: feature/audit-headers) ---
-# Add request controls & browser security header defaults here
+# CIS 5.2.1: Timeout values for reading client header and body (10-20s recommended)
+# Note: 10s also aligns with CIS 2.4.4 (send_timeout <= 10s, not 0)
+nginx_client_header_timeout: "10s"
+nginx_client_body_timeout: "10s"
+nginx_send_timeout: "10s"
+
+# CIS 5.2.2: Maximum request body size
+nginx_client_max_body_size: "2M"
+
+# CIS 5.2.3: Large client header buffers (v3.0.0 compliant baseline: 4 8k)
+nginx_large_client_header_buffers: "4 8k"
+
+# CIS 5.3.1 & 5.3.3: Browser security headers (must include 'always')
+nginx_x_content_type_options: "nosniff"
+nginx_referrer_policy: "strict-origin-when-cross-origin"

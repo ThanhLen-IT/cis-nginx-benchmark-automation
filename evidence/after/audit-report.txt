@@ -1,0 +1,62 @@
+==============================================================================
+CIS NGINX BENCHMARK v3.0.0 - AUDIT REPORT (AFTER)
+==============================================================================
+Timestamp   : 2026-11-10 12:08:52 UTC
+Hostname    : nginx-cis-server
+OS          : Ubuntu 24.04.5 LTS
+NGINX       : nginx version: nginx/1.24.0 (Ubuntu)
+Probe Target: http://127.0.0.1:80 (HTTP=200, 404=404)
+==============================================================================
+
+--- 1. Installation ---
+[FAIL] 1.1.1  | NGINX installed (>= 1.28.0)                | Phien ban hien tai: nginx/1.24.0 (yeu cau >= 1.28.0)
+[PASS] 1.2.1  | Trusted package manager repositories       | Nguon tin cay: 3 repo
+[PASS] 1.2.2  | Latest NGINX package installed             | Installed=1.24.0-2ubuntu7.19, Candidate=1.24.0-2ubuntu7.19
+
+--- 2. Configuration ---
+[PASS] 2.1.1  | Only required dynamic modules loaded       | Khong nap dynamic module nao (0 load_module)
+[PASS] 2.2.1  | Non-privileged dedicated service account   | user=www-data, uid=33, groups=www-data, sudo_blocked=True
+[PASS] 2.2.2  | Service account is locked                  | passwd -S www-data: trang thai=L
+[PASS] 2.2.3  | Service account has invalid shell          | shell=/usr/sbin/nologin
+[PASS] 2.3.1  | Config owned by root:root                  | Tat ca thuoc root:root
+[FAIL] 2.3.2  | Config permissions restricted (750/640)    | Vi pham: 6 thu muc, 14 tep (vd: /etc/nginx (755), /etc/nginx/sites-available (755), /etc/nginx/koi-utf (644), /etc/nginx/scgi_params (644))
+[PASS] 2.3.3  | NGINX PID file secured                     | /run/nginx.pid: uid=0, gid=0, mode=644
+[PASS] 2.4.1  | Only authorized ports open                 | Cong cau hinh=[80], cong dang nghe=[80]
+[FAIL] 2.4.2  | Reject unknown Host requests               | default_server_444=False, https_reject=False, probe_invalid_http=200
+[FAIL] 2.4.3  | keepalive_timeout <= 10s (not 0)           | keepalive_timeout=chua khai bao (mac dinh 75s)
+[PASS] 2.4.4  | send_timeout <= 10s (not 0)                | send_timeout=[10.0]
+[FAIL] 2.5.1  | server_tokens set to off                   | server_tokens_off=False, HTTP Server header=['nginx/1.24.0 (Ubuntu)'] (code=200)
+[FAIL] 2.5.2  | Custom error/index hide NGINX              | error_page=False, 404_leaks_nginx=True, stock_index=True
+[FAIL] 2.5.3  | Hidden file serving disabled               | rule_location_hidden=False, probe_/.git/HEAD=404
+
+--- 3. Logging ---
+[FAIL] 3.1    | Detailed access log format (JSON/custom)   | log_format=khong co, dang dung=mac dinh combined
+[PASS] 3.2    | Access logging enabled                     | access_log=['http:/var/log/nginx/access.log'], global_off=False
+[FAIL] 3.3    | Error log enabled (level info/notice)      | error_log=['main:/var/log/nginx/error.log(default(error))']
+
+--- 4. SSL/TLS ---
+[FAIL] 4.1.1  | HTTP redirected to HTTPS                   | cfg_redirect=False, http_probe=200 loc=[]
+[FAIL] 4.1.3  | Private key permissions <= 400             | Chua cau hinh ssl_certificate_key hoac file .key
+[FAIL] 4.1.4  | Only TLSv1.3 protocol enabled              | ssl_protocols=['TLSv1 TLSv1.1 TLSv1.2 TLSv1.3']
+[FAIL] 4.1.5  | Disable weak ciphers (TLS 1.3 only)        | TLSv1.3_exclusive=False, weak_ssl_ciphers=none
+[FAIL] 4.1.6  | TLS 1.3 DH params (no ssl_dhparam)         | TLSv1.3_exclusive=False, ssl_dhparam_present=False
+
+--- 5. Request Controls/Headers ---
+[PASS] 5.2.1  | Client header/body/send timeouts (10-20s)  | client_header_timeout=[10.0], client_body_timeout=[10.0], send_timeout=[10.0]
+[PASS] 5.2.2  | Maximum request body size defined          | client_max_body_size=[('http', '2M')]
+[PASS] 5.2.3  | large_client_header_buffers compliant      | Gia tri=[('4', '8k')]
+[PASS] 5.3.1  | X-Content-Type-Options: nosniff always     | cfg_always=True, live_200=True, live_404=True
+[PASS] 5.3.3  | Referrer-Policy header always              | cfg_always=True, live_200=['strict-origin-when-cross-origin'], live_404=['strict-origin-when-cross-origin']
+
+==============================================================================
+THONG KE THEO NHOM:
+  1. Installation             :  2/ 3 PASS
+  2. Configuration            :  8/14 PASS
+  3. Logging                  :  1/ 3 PASS
+  4. SSL/TLS                  :  0/ 5 PASS
+  5. Request Controls/Headers :  5/ 5 PASS
+------------------------------------------------------------------------------
+TONG KET (AFTER): PASS=16/30 (53.3%), FAIL=14/30
+Xuat bao cao: /home/ubuntu/nginx-cis-project/evidence/after/audit-report.txt
+Xuat CSV    : /home/ubuntu/nginx-cis-project/evidence/after/audit-summary.csv
+==============================================================================

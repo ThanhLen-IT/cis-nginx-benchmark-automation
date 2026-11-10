@@ -1,3 +1,76 @@
 ---
-# TODO (TV3 - feature/audit-headers): CIS 5.2.1-5.2.3, 5.3.1, 5.3.3 (Request Controls & Headers)
-[]
+# CIS NGINX Benchmark v3.0.0 - Section 5: Request Controls & Browser Security (TV3)
+# Controls: 5.2.1, 5.2.2, 5.2.3, 5.3.1, 5.3.3
+
+- name: "CIS 5.x | Ensure NGINX conf.d directory exists with restricted permissions"
+  ansible.builtin.file:
+    path: "{{ nginx_conf_d_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  tags:
+    - section5
+    - request_controls
+    - security_headers
+
+- name: "CIS 5.2.1 | Check if send_timeout is already set outside cis-request-controls.conf"
+  ansible.builtin.shell: |
+    shopt -s nullglob
+    files=("{{ nginx_main_conf }}")
+    for f in "{{ nginx_conf_d_dir }}"/*.conf; do
+      [ "$(basename "$f")" = "cis-request-controls.conf" ] && continue
+      files+=("$f")
+    done
+    grep -Eq '^[[:space:]]*send_timeout[[:space:]]+' "${files[@]}"
+  args:
+    executable: /bin/bash
+  register: tv3_send_timeout_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags:
+    - section5
+    - cis_5_2_1
+    - request_controls
+
+- name: "CIS 5.2.1 | Set fact whether send_timeout is managed externally (e.g. by CIS 2.4.4)"
+  ansible.builtin.set_fact:
+    tv3_send_timeout_external: "{{ tv3_send_timeout_check.rc == 0 }}"
+  tags:
+    - section5
+    - cis_5_2_1
+    - request_controls
+
+- name: "CIS 5.2.1-5.2.3 | Deploy request controls configuration"
+  ansible.builtin.template:
+    src: cis-request-controls.conf.j2
+    dest: "{{ nginx_conf_d_dir }}/cis-request-controls.conf"
+    owner: root
+    group: root
+    mode: "0640"
+  notify:
+    - Validate nginx configuration
+    - Reload nginx
+  tags:
+    - section5
+    - cis_5_2_1
+    - cis_5_2_2
+    - cis_5_2_3
+    - request_controls
+
+- name: "CIS 5.3.1, 5.3.3 | Deploy browser security headers configuration"
+  ansible.builtin.template:
+    src: cis-security-headers.conf.j2
+    dest: "{{ nginx_conf_d_dir }}/cis-security-headers.conf"
+    owner: root
+    group: root
+    mode: "0640"
+  notify:
+    - Validate nginx configuration
+    - Reload nginx
+  tags:
+    - section5
+    - cis_5_3_1
+    - cis_5_3_3
+    - security_headers
