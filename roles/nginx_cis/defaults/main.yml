@@ -14,7 +14,20 @@ nginx_web_root: /var/www/html
 # Add installation & configuration defaults here
 
 # --- Section 3 & 4 (TV2: feature/logging-tls) ---
-# Add logging & TLS defaults here
+
+# TLS server identity
+nginx_cis_server_names:
+  - web01.corp.example
+  - web01
+  - 10.20.30.10
+
+nginx_cis_primary_name: web01.corp.example
+nginx_cis_private_ip: 10.20.30.10
+
+# TLS certificate and private key
+nginx_cis_tls_certificate: /etc/nginx/ssl/web01.crt
+nginx_cis_tls_private_key: /etc/nginx/ssl/web01.key
+nginx_cis_tls_certificate_days: 365
 
 # --- Section 5 (TV3: feature/audit-headers) ---
 # CIS 5.2.1: Timeout values for reading client header and body (10-20s recommended)
