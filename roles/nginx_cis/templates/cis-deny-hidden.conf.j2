@@ -1,2 +1,6 @@
-# TODO (TV1 - feature/configuration): CIS 2.5.3 (Deny hidden file serving, allow ACME challenge if needed)
-
+# CIS 2.5.3 - Deny access to hidden files
+location ~ /\.(?!well-known(?:/|$)) {
+    deny all;
+    access_log off;
+    log_not_found off;
+}

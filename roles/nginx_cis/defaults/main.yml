@@ -28,18 +28,23 @@ nginx_repository_file: "/etc/apt/sources.list.d/nginx.list"
 nginx_apt_preferences_file: "/etc/apt/preferences.d/99nginx"
 
 # Section 2 - Basic Configuration
-nginx_keepalive_timeout: "10s"
-nginx_send_timeout: "10s"
+# CIS 2.3
+nginx_config_dir_mode: "0750"
+nginx_config_file_mode: "0640"
+nginx_pid_file: "/run/nginx.pid"
+nginx_modules_directory: "/usr/lib/nginx/modules"
 
+# CIS 2.4
+nginx_keepalive_timeout: "10s"
 nginx_allowed_ports:
   - 80
   - 443
-
-nginx_config_dir_mode: "0750"
-nginx_config_file_mode: "0640"
-
-nginx_pid_file: "/run/nginx.pid"
 nginx_default_server_return_code: 444
+
+# CIS 2.5 - Limit NGINX Information Disclosure
+nginx_server_tokens: "off"
+nginx_deny_hidden_files: true
+nginx_allow_well_known: true
 
 # --- Section 3 & 4 (TV2: feature/logging-tls) ---
 # Add logging & TLS defaults here
