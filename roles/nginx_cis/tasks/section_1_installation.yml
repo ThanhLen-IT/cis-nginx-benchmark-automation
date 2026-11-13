@@ -1,4 +1,130 @@
 ---
-# TODO (TV1 - feature/configuration): CIS 1.1.1, 1.2.1, 1.2.2 (Installation & Updates)
-[]
+# CIS NGINX Benchmark v3.0.0
+# Section 1 | Installation & Software Updates
 
+- name: "CIS 1.1.1 | Verify supported Ubuntu version"
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["distribution"] == "Ubuntu"
+      - ansible_facts["distribution_release"] == nginx_repository_distribution
+    fail_msg: "This playbook requires Ubuntu 24.04 Noble."
+    success_msg: "Ubuntu Noble detected."
+
+- name: "CIS 1.1.1 | Install repository prerequisites"
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - gnupg
+      - ubuntu-keyring
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: "CIS 1.2.1 | Download official NGINX signing key"
+  ansible.builtin.get_url:
+    url: "{{ nginx_signing_key_url }}"
+    dest: /tmp/nginx_signing.key
+    mode: "0644"
+
+- name: "CIS 1.2.1 | Check whether NGINX keyring exists"
+  ansible.builtin.stat:
+    path: "{{ nginx_signing_key_path }}"
+  register: nginx_keyring_status
+
+- name: "CIS 1.2.1 | Convert signing key to keyring format"
+  ansible.builtin.command:
+    argv:
+      - gpg
+      - --dearmor
+      - --yes
+      - --output
+      - "{{ nginx_signing_key_path }}"
+      - /tmp/nginx_signing.key
+  when: not nginx_keyring_status.stat.exists
+
+- name: "CIS 1.2.1 | Set keyring permissions"
+  ansible.builtin.file:
+    path: "{{ nginx_signing_key_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    state: file
+
+- name: "CIS 1.2.1 | Verify official NGINX signing key"
+  ansible.builtin.command:
+    argv:
+      - gpg
+      - --show-keys
+      - --with-colons
+      - "{{ nginx_signing_key_path }}"
+  register: nginx_signing_key_info
+  changed_when: false
+
+- name: "CIS 1.2.1 | Confirm signing key fingerprint"
+  ansible.builtin.assert:
+    that:
+      - "'573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62' in nginx_signing_key_info.stdout"
+    fail_msg: "NGINX signing key fingerprint does not match the official key."
+    success_msg: "Official NGINX signing key verified."
+
+- name: "CIS 1.2.1 | Configure official NGINX stable repository"
+  ansible.builtin.copy:
+    dest: "{{ nginx_repository_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      deb [signed-by={{ nginx_signing_key_path }}] {{ nginx_repository_url }} {{ nginx_repository_distribution }} {{ nginx_repository_component }}
+
+- name: "CIS 1.2.1 | Configure APT repository priority"
+  ansible.builtin.copy:
+    dest: "{{ nginx_apt_preferences_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      Package: *
+      Pin: origin nginx.org
+      Pin: release o=nginx
+      Pin-Priority: 900
+
+- name: "CIS 1.2.2 | Update APT package cache"
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: "CIS 1.2.2 | Install latest NGINX package"
+  ansible.builtin.apt:
+    name: nginx
+    state: latest
+
+- name: "CIS 1.1.1 | Get installed NGINX package version"
+  ansible.builtin.command:
+    argv:
+      - dpkg-query
+      - -W
+      - "-f=${Version}"
+      - nginx
+  register: nginx_installed_version
+  changed_when: false
+
+- name: "CIS 1.1.1 | Verify minimum NGINX version"
+  ansible.builtin.command:
+    argv:
+      - dpkg
+      - --compare-versions
+      - "{{ nginx_installed_version.stdout }}"
+      - ge
+      - "{{ nginx_minimum_version }}"
+  register: nginx_version_check
+  changed_when: false
+  failed_when: nginx_version_check.rc != 0
+
+- name: "CIS 1.1.1 | Display installed NGINX version"
+  ansible.builtin.debug:
+    msg: "NGINX {{ nginx_installed_version.stdout }} is installed and meets the minimum version {{ nginx_minimum_version }}."
+
+- name: "CIS 1.1.1 | Enable and start NGINX service"
+  ansible.builtin.service:
+    name: nginx
+    enabled: yes
+    state: started

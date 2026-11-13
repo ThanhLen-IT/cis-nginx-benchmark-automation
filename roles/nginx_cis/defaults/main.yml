@@ -2,7 +2,7 @@
 # Shared defaults for nginx_cis role (CIS NGINX Benchmark v3.0.0)
 
 # --- Shared paths & service ---
-nginx_user: www-data
+nginx_user: nginx
 nginx_conf_dir: /etc/nginx
 nginx_main_conf: /etc/nginx/nginx.conf
 nginx_conf_d_dir: /etc/nginx/conf.d
@@ -11,7 +11,40 @@ nginx_log_dir: /var/log/nginx
 nginx_web_root: /var/www/html
 
 # --- Section 1 & 2 (TV1: feature/configuration) ---
-# Add installation & configuration defaults here
+# CIS 1.1.1: Minimum NGINX version
+nginx_minimum_version: "1.28.0"
+
+# CIS 1.2.1: Official NGINX stable repository
+nginx_repository_url: "https://nginx.org/packages/ubuntu"
+nginx_repository_distribution: "noble"
+nginx_repository_component: "nginx"
+
+# Official signing key
+nginx_signing_key_url: "https://nginx.org/keys/nginx_signing.key"
+nginx_signing_key_path: "/usr/share/keyrings/nginx-archive-keyring.gpg"
+
+# Repository configuration
+nginx_repository_file: "/etc/apt/sources.list.d/nginx.list"
+nginx_apt_preferences_file: "/etc/apt/preferences.d/99nginx"
+
+# Section 2 - Basic Configuration
+# CIS 2.3
+nginx_config_dir_mode: "0750"
+nginx_config_file_mode: "0640"
+nginx_pid_file: "/run/nginx.pid"
+nginx_modules_directory: "/usr/lib/nginx/modules"
+
+# CIS 2.4
+nginx_keepalive_timeout: "10s"
+nginx_allowed_ports:
+  - 80
+  - 443
+nginx_default_server_return_code: 444
+
+# CIS 2.5 - Limit NGINX Information Disclosure
+nginx_server_tokens: "off"
+nginx_deny_hidden_files: true
+nginx_allow_well_known: true
 
 # --- Section 3 & 4 (TV2: feature/logging-tls) ---
 # Add logging & TLS defaults here
