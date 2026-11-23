@@ -94,7 +94,7 @@ Backup cấu hình nằm ở `/var/backups/nginx-cis/<run-id>/etc-nginx.tar.gz`.
 | TLS | 4.1.1, 4.1.3–4.1.6 | 5 |
 | Request Controls / Headers | 5.2.1–5.2.3, 5.3.1, 5.3.3 | 5 |
 
-Xem [luồng xử lý](docs/ARCHITECTURE.md), [Manual](docs/MANUAL.md), [demo](docs/DEMO.md) và [Remote](docs/REMOTE.md).
+Xem [luồng xử lý](docs/ARCHITECTURE.md), [mô hình và bảng thành phần](docs/MODEL.md), [Manual](docs/MANUAL.md), [demo](docs/DEMO.md) và [Remote](docs/REMOTE.md).
 Điều kiện được đối chiếu bản PDF CIS NGINX v3.0.0 của nhóm; nhãn Manual trong benchmark không phải tên hình thức chạy của repo.
 
 ## Phân công bốn thành viên
