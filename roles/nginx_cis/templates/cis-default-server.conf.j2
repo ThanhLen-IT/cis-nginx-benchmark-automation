@@ -1,6 +1,0 @@
-# CIS 2.4.2 - Default server rejects unknown hostnames
-server {
-    listen 80 default_server;
-    server_name _;
-    return {{ nginx_default_server_return_code }};
-}

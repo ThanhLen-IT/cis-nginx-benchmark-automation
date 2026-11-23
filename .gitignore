@@ -243,3 +243,13 @@ __pycache__/
 .DS_Store
 *.swp
 *.swo
+
+
+# Generated lab evidence and local settings
+evidence/*
+!evidence/.gitkeep
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+config/lab.local.yml

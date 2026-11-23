@@ -1,10 +1,10 @@
 ---
-- name: Validate nginx configuration
+- name: Validate installed NGINX configuration
   ansible.builtin.command: nginx -t
   changed_when: false
-  notify: Reload nginx
-
-- name: Reload nginx
-  ansible.builtin.service:
+  listen: Apply validated nginx configuration
+- name: Reload NGINX after successful validation
+  ansible.builtin.systemd_service:
     name: nginx
     state: reloaded
+  listen: Apply validated nginx configuration

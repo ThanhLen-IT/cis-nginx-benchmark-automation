@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-# Post-Hardening Audit (After Hardening) - 30 tieu chi CIS NGINX Benchmark v3.0.0 (TV3)
 set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-# shellcheck source=audit/cis_audit_common.sh
-source "${SCRIPT_DIR}/cis_audit_common.sh"
-
-run_cis_audit "after" "${PROJECT_ROOT}"
+project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+exec "$project_root/cisctl" audit --stage after "$@"

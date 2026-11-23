@@ -186,6 +186,34 @@ types {
     video/x-msvideo                                  avi;
 }
 
+# configuration file /etc/nginx/conf.d/cis-request-controls.conf:
+# Ansible managed
+# CIS NGINX Benchmark v3.0.0 - Section 5.2 Request Controls (TV3)
+# Included inside http {} via /etc/nginx/conf.d/*.conf
+
+# CIS 5.2.1 - Timeout values for reading client header and body
+client_header_timeout 10s;
+client_body_timeout   10s;
+send_timeout          10s;
+# CIS 5.2.2 - Maximum request body size
+client_max_body_size  2M;
+
+# CIS 5.2.3 - Maximum buffer size for URIs (CIS v3.0.0 safe baseline: 4 8k)
+large_client_header_buffers 4 8k;
+
+# configuration file /etc/nginx/conf.d/cis-security-headers.conf:
+# Ansible managed
+# CIS NGINX Benchmark v3.0.0 - Section 5.3 Browser Security Headers (TV3)
+# Active globally via /etc/nginx/conf.d/*.conf (http {}).
+# Also safe to 'include /etc/nginx/conf.d/cis-security-headers.conf;' inside
+# server {} or location {} blocks that declare other add_header rules (e.g. HSTS).
+
+# CIS 5.3.1 - Prevent MIME-type sniffing across all HTTP status codes
+add_header X-Content-Type-Options "nosniff" always;
+
+# CIS 5.3.3 - Control Referrer leakage across origins
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
 # configuration file /etc/nginx/sites-enabled/default:
 ##
 # You should look at the following URL's in order to grasp a solid understanding
@@ -278,4 +306,3 @@ server {
 #		try_files $uri $uri/ =404;
 #	}
 #}
-

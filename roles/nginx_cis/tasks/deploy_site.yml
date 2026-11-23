@@ -1,4 +1,63 @@
 ---
-# TODO (Shared / Integration): Deploy site configuration (enterprise-site / hardened-site)
-[]
-
+- name: Create neutral website root
+  ansible.builtin.file:
+    path: "{{ nginx_cis_web_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Install neutral pages
+  ansible.builtin.copy:
+    dest: "{{ nginx_cis_web_root }}/{{ item.name }}"
+    content: "{{ item.content }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - {name: index.html, content: '<!doctype html><title>CIS lab</title><h1>Lab service</h1>'}
+    - {name: 404.html, content: '<!doctype html><title>Not found</title><h1>Not found</h1>'}
+    - {name: 50x.html, content: '<!doctype html><title>Service unavailable</title><h1>Service unavailable</h1>'}
+- name: Render candidate without replacing live config
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/.cis-candidate.conf
+    owner: root
+    group: root
+    mode: "0640"
+- name: Validate complete candidate before installing
+  ansible.builtin.command: nginx -t -c /etc/nginx/.cis-candidate.conf
+  changed_when: false
+- name: Install validated configuration
+  ansible.builtin.copy:
+    src: /etc/nginx/.cis-candidate.conf
+    dest: /etc/nginx/nginx.conf
+    remote_src: true
+    owner: root
+    group: root
+    mode: "{{ '0640' if 2 in nginx_cis_enabled else '0644' }}"
+    backup: true
+  notify: Apply validated nginx configuration
+- name: Apply handlers before post-validation
+  ansible.builtin.meta: flush_handlers
+- name: Enable and start NGINX
+  ansible.builtin.systemd_service:
+    name: nginx
+    enabled: true
+    state: started
+- name: CIS 2.3.3 protect PID file after start
+  ansible.builtin.file:
+    path: /run/nginx.pid
+    owner: root
+    group: root
+    mode: "0644"
+  when: 2 in nginx_cis_enabled
+- name: Verify service is active
+  ansible.builtin.command: systemctl is-active nginx
+  changed_when: false
+- name: Save profile only after success
+  ansible.builtin.copy:
+    dest: "{{ nginx_cis_profile_path }}"
+    content: "{{ nginx_cis_enabled | to_json }}\n"
+    owner: root
+    group: root
+    mode: "0600"

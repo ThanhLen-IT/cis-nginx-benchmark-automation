@@ -1,0 +1,6 @@
+---
+# Optional identity settings. Default commands work without this file.
+nginx_cis_server_names: [cis.local, localhost, 127.0.0.1]
+nginx_cis_primary_name: cis.local
+nginx_cis_private_ip: 127.0.0.1
+# Keep the documented request/TLS policy unless updating audit criteria as well.
