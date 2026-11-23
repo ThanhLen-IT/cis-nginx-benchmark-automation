@@ -29,7 +29,7 @@
 - name: CIS 1.2.1 configure signed official stable repository
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/nginx-cis.list
-    content: "deb [signed-by=/usr/share/keyrings/nginx-cis.asc] https://nginx.org/packages/ubuntu noble nginx\n"
+    content: "deb [signed-by=/usr/share/keyrings/nginx-cis.asc] https://nginx.org/packages/ubuntu {{ ansible_facts.distribution_release }} nginx\n"
     owner: root
     group: root
     mode: "0644"

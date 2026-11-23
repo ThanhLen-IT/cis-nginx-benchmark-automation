@@ -17,7 +17,7 @@ Nét đứt là phần dự kiến; repo chưa chạy được triển khai Remo
 | Thành phần | Trạng thái trong repo | Địa chỉ cần ghi vào báo cáo | Công cụ / vai trò |
 |---|---|---|---|
 | Máy cá nhân | Giao diện thao tác | IP LAN thực tế; IP public đường ra khi cần | VS Code, extension Remote - SSH, SSH client, phần mềm quay màn hình |
-| VM Ubuntu Server 24.04 | Đích Manual/Local; controller Remote dự kiến | IP VM thực tế, chế độ NAT/bridged, IP public đường ra | Python 3, venv, Ansible, Git, sudo, curl, OpenSSL, iproute2, systemd; NGINX sau khi cài |
+| VM Ubuntu Server 26.04 (VMware) | Đích Manual/Local; controller Remote dự kiến | IP VM thực tế, chế độ NAT/bridged, IP public đường ra | Python 3, venv, Ansible, Git, sudo, curl, OpenSSL, iproute2, systemd; NGINX sau khi cài |
 | EC2 nginx01 | Chưa triển khai; TV1 quản lý | Public IP/DNS, private IP, region/VPC: để nhóm điền | Ubuntu 24.04, Python 3, SSH, sudo, systemd; NGINX và các công cụ audit sẽ được bổ sung |
 | EC2 nginx02 | Chưa triển khai; TV2 quản lý | Để nhóm điền | Như nginx01 |
 | EC2 nginx03 | Chưa triển khai; TV3 quản lý | Để nhóm điền | Như nginx01 |

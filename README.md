@@ -6,8 +6,9 @@ Dùng **VS Code Remote SSH → VM Ubuntu VMware** để sửa code và chạy l�
 
 ## Phạm vi sử dụng
 
-Role dành cho **VM Ubuntu Server 24.04 riêng để làm lab**, có systemd, Python 3, sudo và Internet.
+Role dành cho **VM Ubuntu Server 26.04 trên VMware riêng để làm lab**, có systemd, Python 3, sudo và Internet.
 Role quản lý toàn bộ `/etc/nginx/nginx.conf`, thay website bằng website lab, đổi worker account và nguồn gói. Chụp baseline trước khi chạy; không trỏ vào server ứng dụng đang dùng.
+EC2 dự kiến dùng Ubuntu Server 24.04 LTS; Remote vẫn chưa triển khai. Bản Local cũng cho phép Ubuntu 24.04 để kiểm thử tương thích. Ansible Core 2.21 hỗ trợ Python 3.14 trên VM 26.04 và Python 3.12 trên Ubuntu 24.04.
 Self-signed TLS phục vụ lab; CIS 4.1.2 không thuộc 30 tiêu chí đã chọn.
 Repo không chứa Terraform hoặc chức năng tạo EC2.
 
@@ -118,7 +119,7 @@ bash -n audit/baseline-audit.sh audit/post-hardening-audit.sh
 ansible-playbook site.yml --syntax-check
 ```
 
-GitHub Actions có regression tests và job Ubuntu 24.04 VM chạy full workflow cùng idempotence, upload evidence kể cả khi thất bại.
+GitHub Actions có regression tests và ma trận Ubuntu 24.04/26.04 chạy full workflow cùng idempotence, upload evidence kể cả khi thất bại.
 Trạng thái workflow/artefact thực tế mới xác nhận lượt CI thành công; file workflow không phải bằng chứng đã chạy.
 Tests dùng fixture HTTP/config không được dùng làm kết quả tuân thủ của VM/EC2.
 

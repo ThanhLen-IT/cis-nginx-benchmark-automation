@@ -11,7 +11,7 @@ Các kiểm tra HTTP nhắm tới website lab được chọn; repo không phả
 
 ## Remediation
 
-`site.yml` gọi role. Preflight kiểm tra Ubuntu 24.04/local và nạp profile. Section 1 cấu hình nguồn gói chính thức và nâng cấp NGINX; section 2 quản lý tài khoản/quyền; section 3 log; section 4 vật liệu TLS; section 5 kiểm tra policy request.
+`site.yml` gọi role. Preflight kiểm tra Ubuntu 24.04 hoặc 26.04/local và nạp profile. Section 1 chọn codename theo facts (noble/resolute), cấu hình nguồn gói chính thức và nâng cấp NGINX; section 2 quản lý tài khoản/quyền; section 3 log; section 4 vật liệu TLS; section 5 kiểm tra policy request.
 Template `nginx.conf.j2` là nguồn cấu hình duy nhất được nạp; không include cấu hình website cũ để tránh directive xung đột. Các tệp cũ được giữ và backup, nhưng không còn được include bởi cấu hình lab mới.
 Role render candidate, chạy `nginx -t -c ...` rồi mới copy vào nginx.conf. Hai handler cùng listen một sự kiện: validate chạy trước reload. Profile chỉ được ghi sau triển khai thành công.
 Ansible không đọc CSV để chỉ chạy các dòng FAIL. Module so sánh trạng thái hệ thống với khai báo trong phạm vi/profile đã chọn.

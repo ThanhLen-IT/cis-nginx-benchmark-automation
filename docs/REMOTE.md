@@ -6,7 +6,7 @@ Remote **chưa được triển khai hoặc kiểm thử** trong phiên bản n�
 
 ## Mô hình dự kiến
 
-Windows chạy VS Code Remote SSH → VM Ubuntu VMware làm controller → SSH tới nginx01–nginx04 trên EC2.
+Windows chạy VS Code Remote SSH → VM Ubuntu Server 26.04 trên VMware làm controller → SSH tới nginx01–nginx04 trên EC2 Ubuntu Server 24.04 LTS. Nhóm cần xác nhận VERSION_ID trên từng EC2; không coi mọi bản 24.xx là tương đương.
 Không cần tạo EC2 thứ năm làm controller. VS Code chỉ là giao diện; Ansible chạy trên VM.
 
 ## Thông tin nhóm cần điền

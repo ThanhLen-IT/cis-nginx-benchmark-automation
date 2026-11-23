@@ -1,5 +1,5 @@
 ---
-# Dedicated Ubuntu 24.04 lab VM; the role owns the active nginx.conf.
+# Dedicated Ubuntu 26.04 VMware lab VM (24.04 also supported locally); the role owns the active nginx.conf.
 nginx_cis_sections: [1, 2, 3, 4, 5]
 nginx_cis_profile_path: /var/lib/nginx-cis/profile.json
 nginx_cis_backup_dir: /var/backups/nginx-cis/direct-playbook
