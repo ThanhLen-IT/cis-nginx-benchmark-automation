@@ -1,0 +1,82 @@
+# Managed by Ansible on the dedicated lab VM. No legacy config includes.
+user {{ 'nginx' if 2 in nginx_cis_enabled else 'www-data' }};
+worker_processes auto;
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log {{ 'info' if 3 in nginx_cis_enabled else 'error' }};
+
+events {
+    worker_connections 1024;
+}
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+{% if 2 in nginx_cis_enabled %}
+    server_tokens off;
+    keepalive_timeout {{ nginx_cis_keepalive_timeout }};
+{% endif %}
+{% if 2 in nginx_cis_enabled or 5 in nginx_cis_enabled %}
+    send_timeout {{ nginx_cis_send_timeout }};
+{% endif %}
+{% if 5 in nginx_cis_enabled %}
+    client_header_timeout {{ nginx_cis_client_header_timeout }};
+    client_body_timeout {{ nginx_cis_client_body_timeout }};
+    client_max_body_size {{ nginx_cis_client_max_body_size }};
+    large_client_header_buffers {{ nginx_cis_large_client_header_buffers }};
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "{{ nginx_cis_referrer_policy }}" always;
+{% endif %}
+{% if 3 in nginx_cis_enabled %}
+    log_format cis_json escape=json
+        '{"timestamp":"$time_iso8601","remote_addr":"$remote_addr",'
+        '"remote_user":"$remote_user","request":"$request",'
+        '"request_uri":"$request_uri","status":$status,'
+        '"body_bytes_sent":$body_bytes_sent,"http_user_agent":"$http_user_agent"}';
+    access_log /var/log/nginx/access.json cis_json;
+{% else %}
+    access_log /var/log/nginx/access.log combined;
+{% endif %}
+{% if 4 in nginx_cis_enabled %}
+    ssl_protocols TLSv1.3;
+    ssl_prefer_server_ciphers off;
+{% endif %}
+{% if 2 in nginx_cis_enabled %}
+    server {
+        listen 80 default_server;
+        server_name _;
+        return 444;
+    }
+{% if 4 in nginx_cis_enabled %}
+    server {
+        listen 443 ssl default_server;
+        server_name _;
+        ssl_reject_handshake on;
+    }
+{% endif %}
+{% endif %}
+    server {
+        listen 80;
+        server_name {{ nginx_cis_server_names | join(' ') }};
+{% if 4 in nginx_cis_enabled %}
+        return 301 https://{{ nginx_cis_primary_name }}$request_uri;
+    }
+    server {
+        listen 443 ssl;
+        server_name {{ nginx_cis_server_names | join(' ') }};
+        ssl_certificate {{ nginx_cis_tls_certificate }};
+        ssl_certificate_key {{ nginx_cis_tls_private_key }};
+{% endif %}
+        root {{ nginx_cis_web_root }};
+        index index.html;
+{% if 2 in nginx_cis_enabled %}
+        error_page 404 /404.html;
+        error_page 500 502 503 504 /50x.html;
+        location ~ /\.(?!well-known(?:/|$)) {
+            deny all;
+        }
+{% endif %}
+        location / {
+            try_files $uri $uri/ =404;
+        }
+    }
+}

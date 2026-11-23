@@ -1,0 +1,41 @@
+name: Validate local lab
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  static-and-regression:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: pip install -r requirements-dev.txt
+      - run: python -m compileall -q audit scripts callback_plugins
+      - run: bash -n audit/baseline-audit.sh audit/post-hardening-audit.sh
+      - run: ansible-playbook -i inventory/hosts.yml site.yml --syntax-check
+      - run: pytest -q
+  ubuntu-vm-integration:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+      - name: Audit before, remediate, re-audit, repeat and re-audit
+        run: sudo env PATH="$PWD/.venv/bin:$PATH" ./cisctl run --run-id ci-local --idempotence
+      - name: Make evidence readable for artifact upload
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-vm-evidence-${{ matrix.os }}
+          path: evidence/ci-local/

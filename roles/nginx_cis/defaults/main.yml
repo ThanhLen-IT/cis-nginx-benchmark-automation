@@ -1,80 +1,21 @@
 ---
-# Shared defaults for nginx_cis role (CIS NGINX Benchmark v3.0.0)
-
-# --- Shared paths & service ---
-nginx_user: nginx
-nginx_conf_dir: /etc/nginx
-nginx_main_conf: /etc/nginx/nginx.conf
-nginx_conf_d_dir: /etc/nginx/conf.d
-nginx_snippets_dir: /etc/nginx/snippets
-nginx_log_dir: /var/log/nginx
-nginx_web_root: /var/www/html
-
-# --- Section 1 & 2 (TV1: feature/configuration) ---
-# CIS 1.1.1: Minimum NGINX version
-nginx_minimum_version: "1.28.0"
-
-# CIS 1.2.1: Official NGINX stable repository
-nginx_repository_url: "https://nginx.org/packages/ubuntu"
-nginx_repository_distribution: "noble"
-nginx_repository_component: "nginx"
-
-# Official signing key
-nginx_signing_key_url: "https://nginx.org/keys/nginx_signing.key"
-nginx_signing_key_path: "/usr/share/keyrings/nginx-archive-keyring.gpg"
-
-# Repository configuration
-nginx_repository_file: "/etc/apt/sources.list.d/nginx.list"
-nginx_apt_preferences_file: "/etc/apt/preferences.d/99nginx"
-
-# Section 2 - Basic Configuration
-# CIS 2.3
-nginx_config_dir_mode: "0750"
-nginx_config_file_mode: "0640"
-nginx_pid_file: "/run/nginx.pid"
-nginx_modules_directory: "/usr/lib/nginx/modules"
-
-# CIS 2.4
-nginx_keepalive_timeout: "10s"
-nginx_allowed_ports:
-  - 80
-  - 443
-nginx_default_server_return_code: 444
-
-# CIS 2.5 - Limit NGINX Information Disclosure
-nginx_server_tokens: "off"
-nginx_deny_hidden_files: true
-nginx_allow_well_known: true
-
-# --- Section 3 & 4 (TV2: feature/logging-tls) ---
-
-# TLS server identity
-nginx_cis_server_names:
-  - web01.corp.example
-  - web01
-  - 10.20.30.10
-
-nginx_cis_primary_name: web01.corp.example
-nginx_cis_private_ip: 10.20.30.10
-
-# TLS certificate and private key
-nginx_cis_tls_certificate: /etc/nginx/ssl/web01.crt
-nginx_cis_tls_private_key: /etc/nginx/ssl/web01.key
+# Dedicated Ubuntu 26.04 VMware lab VM (24.04 also supported locally); the role owns the active nginx.conf.
+nginx_cis_sections: [1, 2, 3, 4, 5]
+nginx_cis_profile_path: /var/lib/nginx-cis/profile.json
+nginx_cis_backup_dir: /var/backups/nginx-cis/direct-playbook
+nginx_cis_server_names: [cis.local, localhost, 127.0.0.1]
+nginx_cis_primary_name: cis.local
+nginx_cis_private_ip: 127.0.0.1
+nginx_cis_web_root: /var/www/cis-lab
+nginx_cis_tls_certificate: /etc/nginx/ssl/cis-lab.crt
+nginx_cis_tls_private_key: /etc/nginx/ssl/cis-lab.key
 nginx_cis_tls_certificate_days: 365
-
-# --- Section 5 (TV3: feature/audit-headers) ---
-# CIS 5.2.1: Timeout values for reading client header and body (10-20s recommended)
-# Note: 10s also aligns with CIS 2.4.4 (send_timeout <= 10s, not 0)
-nginx_client_header_timeout: "10s"
-nginx_client_body_timeout: "10s"
-nginx_send_timeout: "10s"
-
-# CIS 5.2.2: Maximum request body size
-nginx_client_max_body_size: "2M"
-
-# CIS 5.2.3: Large client header buffers (v3.0.0 compliant baseline: 4 8k)
-nginx_large_client_header_buffers: "4 8k"
-
-# CIS 5.3.1 & 5.3.3: Browser security headers (must include 'always')
-nginx_x_content_type_options: "nosniff"
-nginx_referrer_policy: "strict-origin-when-cross-origin"
+nginx_cis_minimum_version: "1.28.0"
+nginx_cis_signing_fingerprint: 573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62
+nginx_cis_keepalive_timeout: 10s
+nginx_cis_send_timeout: 10s
+nginx_cis_client_header_timeout: 10s
+nginx_cis_client_body_timeout: 10s
+nginx_cis_client_max_body_size: 2M
+nginx_cis_large_client_header_buffers: 4 8k
+nginx_cis_referrer_policy: strict-origin-when-cross-origin

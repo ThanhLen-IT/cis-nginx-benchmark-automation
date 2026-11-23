@@ -1,47 +1,38 @@
 ---
-- name: Create pre-Section-3 NGINX backup
-  ansible.builtin.command:
-    cmd: tar -czf /root/nginx-pre-cis-section3.tar.gz /etc/nginx
-    creates: /root/nginx-pre-cis-section3.tar.gz
-  tags:
-    - cis_section_3
-
-- name: "CIS 3.1 and 3.2 | Configure detailed JSON access logging"
-  ansible.builtin.template:
-    src: cis-logging.conf.j2
-    dest: /etc/nginx/conf.d/10-cis-logging.conf
-    owner: root
-    group: root
-    mode: "0640"
-  notify: Validate nginx configuration
-  tags:
-    - cis_section_3
-    - cis_3_1
-    - cis_3_2
-
-- name: CIS 3.2 | Secure JSON access log permissions
+- name: CIS 3 prepare log directory
   ansible.builtin.file:
-    path: /var/log/nginx/access.json
+    path: /var/log/nginx
+    state: directory
+    owner: root
+    group: adm
+    mode: "0750"
+- name: CIS 3 protect log files without touching timestamps
+  ansible.builtin.file:
+    path: "{{ item }}"
     state: touch
-    owner: www-data
+    owner: root
     group: adm
     mode: "0640"
     access_time: preserve
     modification_time: preserve
-  become: true
-  tags:
-    - cis_section_3
-    - cis_3_2
-
-- name: "CIS 3.3 | Enable error logging at info level"
-  ansible.builtin.lineinfile:
-    path: /etc/nginx/nginx.conf
-    regexp: '^\s*error_log\s+'
-    line: 'error_log /var/log/nginx/error.log info;'
-    insertbefore: '^\s*events\s*\{'
-    backup: true
-  notify: Validate nginx configuration
-  tags:
-    - cis_section_3
-    - cis_3_3
-
+  loop: [/var/log/nginx/access.json, /var/log/nginx/error.log]
+- name: Rotate JSON access log
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/nginx-cis
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/nginx/access.json {
+          daily
+          rotate 7
+          missingok
+          notifempty
+          compress
+          delaycompress
+          create 0640 root adm
+          sharedscripts
+          postrotate
+              [ ! -f /run/nginx.pid ] || kill -USR1 $(cat /run/nginx.pid)
+          endscript
+      }
