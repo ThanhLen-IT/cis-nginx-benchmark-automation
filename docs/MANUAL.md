@@ -45,12 +45,12 @@ curl --noproxy '*' -sSI http://127.0.0.1/not-found-cis > evidence/manual-demo/af
 systemctl is-active nginx
 ```
 
-| Tiêu chí | Lệnh kiểm tra trước/sau | Giá trị áp dụng | Kết quả thực đo |
+| Tiêu chí | Câu lệnh | Kết quả | Ghi chú |
 |---|---|---|---|
-| 5.2.1 | `sudo nginx -T` | header/body/send timeout 10s | Điền từ lần chạy |
-| 5.2.2 | `sudo nginx -T` | body 2M | Điền từ lần chạy |
-| 5.2.3 | `sudo nginx -T` | buffer 4 8k | Điền từ lần chạy |
-| 5.3.1 | `curl -I` với 200/404 | nosniff | Điền từ lần chạy |
-| 5.3.3 | `curl -I` với 200/404 | strict-origin-when-cross-origin | Điền từ lần chạy |
+| 5.2.1 | `sudo nginx -T` | Điền before → after thực đo | Header/body/send timeout 10s; đối chiếu context và override |
+| 5.2.2 | `sudo nginx -T` | Điền before → after thực đo | Body 2M |
+| 5.2.3 | `sudo nginx -T` | Điền before → after thực đo | Buffer 4 8k |
+| 5.3.1 | `curl --noproxy '*' -sSI http://127.0.0.1/` và `/not-found-cis` | Điền status và header before → after | Phải nhận 200/404 tương ứng, đều có nosniff |
+| 5.3.3 | `curl --noproxy '*' -sSI http://127.0.0.1/` và `/not-found-cis` | Điền status và header before → after | Cả hai có strict-origin-when-cross-origin |
 
 Đây là hướng dẫn, không phải bằng chứng rằng các lệnh đã chạy trên VM của nhóm. Đổi URL nếu website thực tế cần hostname hoặc HTTPS.

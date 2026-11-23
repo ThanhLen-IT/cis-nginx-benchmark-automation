@@ -492,11 +492,12 @@ def check_2_configuration():
                     lst = os.lstat(p)
                     if lst.st_uid != 0 or lst.st_gid != 0:
                         bad_owner.append(f"{p} ({lst.st_uid}:{lst.st_gid})")
-                    if os.path.islink(p) and not os.path.exists(p):
+                    # CIS uses find without -L: ownership includes the link itself,
+                    # while -type d/-type f permission checks exclude symlinks.
+                    # Do not audit or chmod a package directory outside /etc/nginx.
+                    if stat.S_ISLNK(lst.st_mode):
                         continue
-                    st = os.stat(p)
-                    if st.st_uid != 0 or st.st_gid != 0:
-                        bad_owner.append(f"{p} ({st.st_uid}:{st.st_gid})")
+                    st = lst
                     mode = stat.S_IMODE(st.st_mode)
                     if stat.S_ISDIR(st.st_mode) or expect_dir:
                         if (mode & 0o027) != 0:

@@ -48,3 +48,11 @@
     owner: root
     group: root
     mode: "0750"
+- name: CIS 2.3.1 protect symbolic link ownership without following targets
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    follow: false
+  loop: "{{ cis_config_tree.files | selectattr('islnk') | list }}"
+  loop_control: {label: "{{ item.path }}"}

@@ -95,3 +95,17 @@ def test_full_audit_has_30_distinct_controls(tmp_path, web):
     _, rows = audit(tmp_path, web, section="all")
     assert len(rows) == 30
     assert all(row["status"] in {"PASS", "FAIL", "ERROR", "REVIEW"} for row in rows.values())
+
+
+@pytest.mark.parametrize("file_mode,expected", [(0o640, "PASS"), (0o644, "FAIL")])
+def test_permissions_follow_cis_find_without_following_symlink_targets(tmp_path, web, file_mode, expected):
+    config = tmp_path / "config"
+    config.mkdir(mode=0o750)
+    actual = config / "nginx.conf"
+    actual.write_text("# fixture")
+    actual.chmod(file_mode)
+    external_modules = tmp_path / "external-modules"
+    external_modules.mkdir(mode=0o755)
+    (config / "modules").symlink_to(external_modules, target_is_directory=True)
+    _, rows = audit(tmp_path, web, section="2")
+    assert rows["2.3.2"]["status"] == expected
