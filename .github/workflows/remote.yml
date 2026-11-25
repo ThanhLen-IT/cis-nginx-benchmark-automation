@@ -14,6 +14,11 @@ jobs:
         with: {python-version: '3.14'}
       - run: pip install -r requirements.txt
       - run: sudo apt-get update && sudo apt-get install -y openssh-server nginx curl openssl iproute2 sudo
+      - name: Start and verify baseline before live audit
+        run: |
+          sudo systemctl enable --now nginx
+          sudo nginx -t
+          curl --noproxy '*' -fsSI http://127.0.0.1/
       - name: Prepare disposable SSH target on this runner
         shell: bash
         run: |

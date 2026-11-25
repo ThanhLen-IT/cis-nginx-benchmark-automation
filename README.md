@@ -22,6 +22,7 @@ ansible-playbook -i inventory/hosts.yml site.yml --syntax-check
 Máy đích cần Python 3, sudo, NGINX và các lệnh `curl`, `openssl`, `timeout`, `ss`, `find`, `getent`,
 `id`, `passwd`, `apt-cache`. Chuẩn bị baseline và snapshot trước hardening. Để audit được trước
 khi Section 1 cài công cụ, cài các phụ thuộc hệ thống trước: `sudo apt install -y nginx curl openssl iproute2 sudo`.
+Trước audit, chạy `sudo systemctl enable --now nginx`, `sudo nginx -t` và thử `curl --noproxy '*' -sSI http://127.0.0.1/`. Nếu baseline không có dịch vụ HTTP truy cập được, audit ghi ERROR và chặn remediation cho tới khi sửa nguyên nhân chuẩn bị.
 Manual không cần `.venv`.
 
 ## Ví dụ Local — đọc audit trước rồi quyết định khắc phục
