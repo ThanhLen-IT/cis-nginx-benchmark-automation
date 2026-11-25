@@ -1,13 +1,5 @@
 ---
-- name: Harden NGINX according to CIS NGINX Benchmark v3.0.0
-  hosts: nginx_servers
-  become: true
-  gather_facts: true
-
-  pre_tasks:
-    - name: Keep the local entry point local
-      ansible.builtin.assert:
-        that: ansible_connection == 'local'
-
-  roles:
-    - role: nginx_cis
+- name: Local Ansible CIS workflow
+  ansible.builtin.import_playbook: playbooks/workflow.yml
+  vars:
+    cis_entry_mode: local

@@ -1,0 +1,30 @@
+---
+- name: Derive semantic checks with native Jinja
+  ansible.builtin.set_fact:
+    cis_derived: "{{ lookup('ansible.builtin.template', 'derived.json.j2') | from_json }}"
+    cis_repo_urls: "{{ cis_apt.stdout | regex_findall('https?://[^ /\\s]+[^\\s]*') }}"
+    cis_installed: "{{ cis_apt.stdout | regex_findall('(?m)^\\s*Installed:\\s*(\\S+)') | first | default('') }}"
+    cis_candidate: "{{ cis_apt.stdout | regex_findall('(?m)^\\s*Candidate:\\s*(\\S+)') | first | default('') }}"
+    cis_root_body: "{{ cis_probe_results.root.stdout | regex_replace('(?s)^.*?\\r?\\n\\r?\\n', '') }}"
+    cis_not_found_body: "{{ cis_probe_results.not_found.stdout | regex_replace('(?s)^.*?\\r?\\n\\r?\\n', '') }}"
+    cis_unapproved_modules: "{{ cis_dirs | selectattr('name','equalto','load_module') | map(attribute='args') | flatten | map('basename') | difference(cis_allowed_dynamic_modules) }}"
+    cis_access_logs: "{{ cis_dirs | selectattr('name','equalto','access_log') | map(attribute='args') | reject('equalto',['off']) | reject('equalto',['/dev/null']) | list }}"
+    cis_info_logs: "{{ cis_dirs | selectattr('name','equalto','error_log') | selectattr('args','contains','info') | rejectattr('args','contains','/dev/null') | list }}"
+- name: Select trusted origins by URL authority
+  ansible.builtin.set_fact:
+    cis_untrusted_urls: "{{ cis_repo_urls | reject('match','^https?://(?:nginx[.]org|(?:[A-Za-z0-9-]+[.])*ubuntu[.]com)(?::[0-9]+)?(?:/|$)') | list }}"
+- name: Evaluate header configuration and observed header values
+  ansible.builtin.set_fact:
+    cis_header_xcto_config: "{{ cis_dirs | selectattr('name','equalto','add_header') | map(attribute='args') | select('equalto',['X-Content-Type-Options','nosniff','always']) | list | length > 0 }}"
+    cis_header_rp_config: "{{ cis_dirs | selectattr('name','equalto','add_header') | selectattr('args','contains','Referrer-Policy') | selectattr('args','contains','always') | map(attribute='args') | flatten | intersect(['no-referrer','same-origin','strict-origin','strict-origin-when-cross-origin']) | length > 0 }}"
+    cis_header_xcto_root: "{{ cis_probe_results.root.stdout | regex_findall('(?im)^X-Content-Type-Options:\\s*([^\\r\\n]+)') | map('trim') | map('lower') | list }}"
+    cis_header_xcto_404: "{{ cis_probe_results.not_found.stdout | regex_findall('(?im)^X-Content-Type-Options:\\s*([^\\r\\n]+)') | map('trim') | map('lower') | list }}"
+    cis_header_rp_root: "{{ cis_probe_results.root.stdout | regex_findall('(?im)^Referrer-Policy:\\s*([^\\r\\n]+)') | map('trim') | map('lower') | list }}"
+    cis_header_rp_404: "{{ cis_probe_results.not_found.stdout | regex_findall('(?im)^Referrer-Policy:\\s*([^\\r\\n]+)') | map('trim') | map('lower') | list }}"
+- name: Record individual control result without stopping at compliance FAIL
+  ansible.builtin.include_tasks: result.yml
+  loop: '{{ cis_catalog }}'
+  loop_control:
+    loop_var: cis_check
+    label: '{{ cis_check.cis_id }}'
+  when: cis_check.section in cis_audit_sections

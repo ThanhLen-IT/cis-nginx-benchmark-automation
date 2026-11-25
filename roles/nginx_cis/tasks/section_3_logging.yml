@@ -1,38 +1,34 @@
----
 - name: CIS 3 prepare log directory
   ansible.builtin.file:
     path: /var/log/nginx
     state: directory
     owner: root
     group: adm
-    mode: "0750"
+    mode: '0750'
+  notify:
+  - Record remediation change
 - name: CIS 3 protect log files without touching timestamps
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: touch
     owner: root
     group: adm
-    mode: "0640"
+    mode: '0640'
     access_time: preserve
     modification_time: preserve
-  loop: [/var/log/nginx/access.json, /var/log/nginx/error.log]
+  loop:
+  - /var/log/nginx/access.json
+  - /var/log/nginx/error.log
+  notify:
+  - Record remediation change
 - name: Rotate JSON access log
   ansible.builtin.copy:
     dest: /etc/logrotate.d/nginx-cis
     owner: root
     group: root
-    mode: "0644"
-    content: |
-      /var/log/nginx/access.json {
-          daily
-          rotate 7
-          missingok
-          notifempty
-          compress
-          delaycompress
-          create 0640 root adm
-          sharedscripts
-          postrotate
-              [ ! -f /run/nginx.pid ] || kill -USR1 $(cat /run/nginx.pid)
-          endscript
-      }
+    mode: '0644'
+    content: "/var/log/nginx/access.json {\n    daily\n    rotate 7\n    missingok\n    notifempty\n    compress\n\
+      \    delaycompress\n    create 0640 root adm\n    sharedscripts\n    postrotate\n        [ ! -f /run/nginx.pid\
+      \ ] || kill -USR1 $(cat /run/nginx.pid)\n    endscript\n}\n"
+  notify:
+  - Record remediation change

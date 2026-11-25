@@ -1,4 +1,3 @@
----
 - name: Preflight and load cumulative lab profile
   ansible.builtin.import_tasks: preflight.yml
 - name: Section 1 installation
@@ -7,6 +6,8 @@
 - name: Check NGINX prerequisite for selected sections
   ansible.builtin.command: nginx -v
   changed_when: false
+  notify:
+  - Record remediation change
 - name: Section 2 configuration
   ansible.builtin.import_tasks: section_2_configuration.yml
   when: 2 in nginx_cis_enabled

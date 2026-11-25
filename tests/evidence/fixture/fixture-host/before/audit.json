@@ -1,0 +1,61 @@
+{
+    "benchmark": "CIS NGINX v3.0.0",
+    "counts": {
+        "ERROR": 0,
+        "FAIL": 0,
+        "PASS": 5,
+        "REVIEW": 0
+    },
+    "hostname": "localhost",
+    "implementation": "ansible-native",
+    "inventory_alias": "localhost",
+    "probe_host": "cis.local",
+    "results": [
+        {
+            "cis_id": "5.2.1",
+            "control": "Client header body and send timeouts 10 to 20 seconds",
+            "detail": "timeouts seconds={'keepalive_timeout': [10.0], 'send_timeout': [10.0], 'client_header_timeout': [10.0], 'client_body_timeout': [10.0]}",
+            "evidence": "raw/collected.json",
+            "group": 5,
+            "status": "PASS"
+        },
+        {
+            "cis_id": "5.2.2",
+            "control": "Explicit positive HTTP request body size",
+            "detail": "client_max_body_size=['2M']; explicit HTTP limit=True",
+            "evidence": "raw/collected.json",
+            "group": 5,
+            "status": "PASS"
+        },
+        {
+            "cis_id": "5.2.3",
+            "control": "Header buffers default or documented 4 8k",
+            "detail": "large_client_header_buffers=[['4', '8k']]; absent uses NGINX default",
+            "evidence": "raw/collected.json",
+            "group": 5,
+            "status": "PASS"
+        },
+        {
+            "cis_id": "5.3.1",
+            "control": "X-Content-Type-Options present with always on HTTP 200 and 404",
+            "detail": "config always=True; HTTP200=['nosniff']; HTTP404=['nosniff']",
+            "evidence": "raw/collected.json",
+            "group": 5,
+            "status": "PASS"
+        },
+        {
+            "cis_id": "5.3.3",
+            "control": "Referrer-Policy present with always on HTTP 200 and 404",
+            "detail": "config always=True; HTTP200=['strict-origin-when-cross-origin']; HTTP404=['strict-origin-when-cross-origin']",
+            "evidence": "raw/collected.json",
+            "group": 5,
+            "status": "PASS"
+        }
+    ],
+    "run_id": "fixture",
+    "sections": [
+        5
+    ],
+    "source": "fixture",
+    "stage": "before"
+} 

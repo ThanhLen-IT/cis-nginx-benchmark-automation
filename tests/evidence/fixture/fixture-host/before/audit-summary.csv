@@ -1,0 +1,6 @@
+CIS_ID,Group,Control,Status,Detail
+"5.2.1","5","Client header body and send timeouts 10 to 20 seconds","PASS","timeouts seconds={'keepalive_timeout': [10.0], 'send_timeout': [10.0], 'client_header_timeout': [10.0], 'client_body_timeout': [10.0]}"
+"5.2.2","5","Explicit positive HTTP request body size","PASS","client_max_body_size=['2M']; explicit HTTP limit=True"
+"5.2.3","5","Header buffers default or documented 4 8k","PASS","large_client_header_buffers=[['4', '8k']]; absent uses NGINX default"
+"5.3.1","5","X-Content-Type-Options present with always on HTTP 200 and 404","PASS","config always=True; HTTP200=['nosniff']; HTTP404=['nosniff']"
+"5.3.3","5","Referrer-Policy present with always on HTTP 200 and 404","PASS","config always=True; HTTP200=['strict-origin-when-cross-origin']; HTTP404=['strict-origin-when-cross-origin']"

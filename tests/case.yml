@@ -1,0 +1,34 @@
+- name: Resolve one complete fixture input
+  ansible.builtin.set_fact:
+    cis_test_inputs: '{{ lookup("ansible.builtin.file", playbook_dir ~ "/fixture.yml") | from_yaml | combine(native_case.overrides
+      | default({})) }}'
+- name: Reset each fixture observation
+  ansible.builtin.set_fact:
+    cis_fixture: '{{ cis_test_inputs.cis_fixture }}'
+    cis_audit_sections: '{{ cis_test_inputs.cis_audit_sections }}'
+    cis_stage: '{{ cis_test_inputs.cis_stage }}'
+    cis_run_id: '{{ cis_test_inputs.cis_run_id }}'
+    cis_host_evidence: '{{ cis_test_inputs.cis_host_evidence }}'
+    cis_nginx_t: '{{ cis_test_inputs.cis_nginx_t }}'
+    cis_nginx_v: '{{ cis_test_inputs.cis_nginx_v }}'
+    cis_apt: '{{ cis_test_inputs.cis_apt }}'
+    cis_sockets: '{{ cis_test_inputs.cis_sockets }}'
+    cis_owners: '{{ cis_test_inputs.cis_owners }}'
+    cis_modes: '{{ cis_test_inputs.cis_modes }}'
+    cis_account: '{{ cis_test_inputs.cis_account }}'
+    cis_pid: '{{ cis_test_inputs.cis_pid }}'
+    cis_key_paths: '{{ cis_test_inputs.cis_key_paths }}'
+    cis_keys: '{{ cis_test_inputs.cis_keys }}'
+    cis_bad_keys: '{{ cis_test_inputs.cis_bad_keys }}'
+    cis_tls13: '{{ cis_test_inputs.cis_tls13 }}'
+    cis_tls12: '{{ cis_test_inputs.cis_tls12 }}'
+    cis_probe_results: '{{ cis_test_inputs.cis_probe_results }}'
+- name: Audit a selected case using the production role
+  ansible.builtin.include_role:
+    name: cis_audit
+- name: Assert expected individual statuses
+  ansible.builtin.assert:
+    that: (cis_results | selectattr('cis_id','equalto',item.key) | first).status == item.value
+  loop: '{{ native_case.expected | dict2items }}'
+  loop_control:
+    label: '{{ native_case.name }} {{ item.key }}'

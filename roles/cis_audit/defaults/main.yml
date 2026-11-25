@@ -1,0 +1,11 @@
+---
+cis_stage: before
+cis_audit_sections: [1, 2, 3, 4, 5]
+cis_minimum_version: '1.28.0'
+cis_http_port: 80
+cis_https_port: 443
+cis_probe_host: ''
+cis_allowed_ports: [80, 443]
+cis_allowed_dynamic_modules: []
+cis_audit_config_dir: /etc/nginx
+cis_fixture: false

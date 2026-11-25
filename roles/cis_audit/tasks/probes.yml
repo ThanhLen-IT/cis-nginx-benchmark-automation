@@ -1,0 +1,68 @@
+---
+- name: Collect NGINX worker account information
+  ansible.builtin.command:
+    argv: '{{ item.argv }}'
+  loop:
+    - {key: uid, argv: [id, -u, '{{ cis_service_user }}']}
+    - {key: groups, argv: [id, -Gn, '{{ cis_service_user }}']}
+    - {key: sudo, argv: [sudo, -n, -l, -U, '{{ cis_service_user }}']}
+    - {key: password, argv: [passwd, -S, '{{ cis_service_user }}']}
+    - {key: passwd, argv: [getent, passwd, '{{ cis_service_user }}']}
+  environment: {LC_ALL: C}
+  register: cis_account_raw
+  changed_when: false
+  failed_when: false
+- name: Index account results
+  ansible.builtin.set_fact:
+    cis_account: "{{ dict(cis_account_raw.results | map(attribute='item.key') | zip(cis_account_raw.results)) }}"
+- name: Inspect PID file
+  ansible.builtin.stat:
+    path: '{{ cis_pid_path }}'
+  register: cis_pid
+- name: Collect protected TLS key paths
+  ansible.builtin.set_fact:
+    cis_key_paths: "{{ cis_dirs | selectattr('name', 'equalto', 'ssl_certificate_key') | map(attribute='args') | flatten | unique | list }}"
+- name: Inspect configured TLS key files without reading their contents
+  ansible.builtin.stat:
+    path: '{{ item }}'
+  loop: '{{ cis_key_paths }}'
+  register: cis_keys
+- name: Check TLS key owner and permission bits
+  ansible.builtin.set_fact:
+    cis_bad_keys: "{{ (cis_bad_keys | default([])) + [item.item] }}"
+  loop: '{{ cis_keys.results }}'
+  when: not item.stat.exists or item.stat.uid | default(-1) != 0 or item.stat.mode | default('') not in ['0400', '0000']
+- name: Request live website responses including error responses and invalid Host
+  ansible.builtin.command:
+    argv: >-
+      {{ ['curl', '--noproxy', '*', '-ksSi', '--max-time', '5', '--connect-timeout', '2',
+          '--resolve', item.host ~ ':' ~ (cis_http_port if item.http or not cis_uses_tls else cis_https_port) ~ ':127.0.0.1',
+          ('http' if item.http or not cis_uses_tls else 'https') ~ '://' ~ item.host ~ ':' ~
+          (cis_http_port if item.http or not cis_uses_tls else cis_https_port) ~ item.path] }}
+  loop:
+    - {key: root, path: '/', host: '{{ cis_target_host }}', http: false}
+    - {key: not_found, path: /cis-audit-nonexistent-page-check, host: '{{ cis_target_host }}', http: false}
+    - {key: hidden, path: /.git/HEAD, host: '{{ cis_target_host }}', http: false}
+    - {key: http, path: '/', host: '{{ cis_target_host }}', http: true}
+    - {key: invalid_http, path: '/', host: invalid.example.com, http: true}
+    - {key: invalid_tls, path: '/', host: invalid.example.com, http: false}
+  register: cis_http_raw
+  changed_when: false
+  failed_when: false
+- name: Index live responses
+  ansible.builtin.set_fact:
+    cis_probe_results: "{{ dict(cis_http_raw.results | map(attribute='item.key') | zip(cis_http_raw.results)) }}"
+- name: Test TLS 1.3 handshake without trusting the lab certificate
+  ansible.builtin.command:
+    argv: [timeout, '7', openssl, s_client, -brief, -connect, '127.0.0.1:{{ cis_https_port }}', -servername, '{{ cis_target_host }}', -tls1_3]
+    stdin: ''
+  register: cis_tls13
+  changed_when: false
+  failed_when: false
+- name: Test whether TLS 1.2 is rejected
+  ansible.builtin.command:
+    argv: [timeout, '7', openssl, s_client, -brief, -connect, '127.0.0.1:{{ cis_https_port }}', -servername, '{{ cis_target_host }}', -tls1_2]
+    stdin: ''
+  register: cis_tls12
+  changed_when: false
+  failed_when: false

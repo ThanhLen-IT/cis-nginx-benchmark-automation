@@ -1,32 +1,42 @@
----
 - name: Create neutral website root
   ansible.builtin.file:
-    path: "{{ nginx_cis_web_root }}"
+    path: '{{ nginx_cis_web_root }}'
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: '0755'
+  notify:
+  - Record remediation change
 - name: Install neutral pages
   ansible.builtin.copy:
-    dest: "{{ nginx_cis_web_root }}/{{ item.name }}"
-    content: "{{ item.content }}"
+    dest: '{{ nginx_cis_web_root }}/{{ item.name }}'
+    content: '{{ item.content }}'
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
   loop:
-    - {name: index.html, content: '<!doctype html><title>CIS lab</title><h1>Lab service</h1>'}
-    - {name: 404.html, content: '<!doctype html><title>Not found</title><h1>Not found</h1>'}
-    - {name: 50x.html, content: '<!doctype html><title>Service unavailable</title><h1>Service unavailable</h1>'}
+  - name: index.html
+    content: <!doctype html><title>CIS lab</title><h1>Lab service</h1>
+  - name: 404.html
+    content: <!doctype html><title>Not found</title><h1>Not found</h1>
+  - name: 50x.html
+    content: <!doctype html><title>Service unavailable</title><h1>Service unavailable</h1>
+  notify:
+  - Record remediation change
 - name: Render candidate without replacing live config
   ansible.builtin.template:
     src: nginx.conf.j2
     dest: /etc/nginx/.cis-candidate.conf
     owner: root
     group: root
-    mode: "0640"
+    mode: '0640'
+  notify:
+  - Record remediation change
 - name: Validate complete candidate before installing
   ansible.builtin.command: nginx -t -c /etc/nginx/.cis-candidate.conf
   changed_when: false
+  notify:
+  - Record remediation change
 - name: Install validated configuration
   ansible.builtin.copy:
     src: /etc/nginx/.cis-candidate.conf
@@ -34,9 +44,11 @@
     remote_src: true
     owner: root
     group: root
-    mode: "{{ '0640' if 2 in nginx_cis_enabled else '0644' }}"
+    mode: '{{ ''0640'' if 2 in nginx_cis_enabled else ''0644'' }}'
     backup: true
-  notify: Apply validated nginx configuration
+  notify:
+  - Apply validated nginx configuration
+  - Record remediation change
 - name: Apply handlers before post-validation
   ansible.builtin.meta: flush_handlers
 - name: Enable and start NGINX
@@ -44,20 +56,30 @@
     name: nginx
     enabled: true
     state: started
+  notify:
+  - Record remediation change
 - name: CIS 2.3.3 protect PID file after start
   ansible.builtin.file:
     path: /run/nginx.pid
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
   when: 2 in nginx_cis_enabled
+  notify:
+  - Record remediation change
 - name: Verify service is active
   ansible.builtin.command: systemctl is-active nginx
   changed_when: false
+  notify:
+  - Record remediation change
 - name: Save profile only after success
   ansible.builtin.copy:
-    dest: "{{ nginx_cis_profile_path }}"
-    content: "{{ nginx_cis_enabled | to_json }}\n"
+    dest: '{{ nginx_cis_profile_path }}'
+    content: '{{ nginx_cis_enabled | to_json }}
+
+      '
     owner: root
     group: root
-    mode: "0600"
+    mode: '0600'
+  notify:
+  - Record remediation change

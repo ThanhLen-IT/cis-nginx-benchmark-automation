@@ -1,0 +1,22 @@
+---
+- name: Select directives and version
+  ansible.builtin.set_fact:
+    cis_dirs: '{{ cis_parsed.directives }}'
+    cis_version: "{{ ((cis_nginx_v.stdout | default('')) ~ (cis_nginx_v.stderr | default(''))) | regex_findall('nginx/([0-9.]+)') | first | default('') }}"
+    cis_uses_tls: "{{ cis_parsed.directives | selectattr('name', 'equalto', 'ssl_certificate') | list | length > 0 }}"
+    cis_service_user: "{{ (cis_parsed.directives | selectattr('name', 'equalto', 'user') | map(attribute='args') | first | default([''])) | first | default('') }}"
+    cis_pid_path: "{{ (cis_parsed.directives | selectattr('name', 'equalto', 'pid') | map(attribute='args') | first | default(['/run/nginx.pid'])) | first }}"
+    cis_config_error: "{{ cis_nginx_t.rc != 0 and cis_version | default('') | length > 0 }}"
+- name: Pick the documented target website or first non-default server name
+  ansible.builtin.set_fact:
+    cis_target_host: "{{ cis_probe_host if cis_probe_host | length else (cis_dirs | selectattr('name', 'equalto', 'server_name') | map(attribute='args') | flatten | reject('equalto', '_') | reject('match', '[*~]') | first | default('localhost')) }}"
+    cis_protocol_args: "{{ cis_dirs | selectattr('name', 'in', ['ssl_protocols', 'proxy_ssl_protocols']) | map(attribute='args') | list }}"
+- name: Collect account, PID and live HTTP TLS evidence
+  ansible.builtin.include_tasks: probes.yml
+  when: not cis_fixture | bool
+- name: Derive HTTP and TLS facts
+  ansible.builtin.set_fact:
+    cis_root_code: "{{ cis_probe_results.root.stdout | regex_findall('(?m)^HTTP/\\S+ ([0-9]{3})') | first | default('000') }}"
+    cis_404_code: "{{ cis_probe_results.not_found.stdout | regex_findall('(?m)^HTTP/\\S+ ([0-9]{3})') | first | default('000') }}"
+    cis_http_code: "{{ cis_probe_results.http.stdout | regex_findall('(?m)^HTTP/\\S+ ([0-9]{3})') | first | default('000') }}"
+    cis_tls13_only: "{{ cis_protocol_args | length > 0 and cis_protocol_args | reject('equalto', ['TLSv1.3']) | list | length == 0 and cis_tls13.rc == 0 and 'TLSv1.3' in cis_tls13.stderr ~ cis_tls13.stdout and cis_tls12.rc != 0 and (cis_tls12.stderr ~ cis_tls12.stdout) is search('(?i)alert protocol version|unsupported protocol|no protocols available') }}"

@@ -1,0 +1,8 @@
+CIS NGINX 3.0.0 | localhost | fixture | before
+Source=fixture; Sections=[5]; Probe=cis.local
+[PASS] 5.2.1 Client header body and send timeouts 10 to 20 seconds: timeouts seconds={'keepalive_timeout': [10.0], 'send_timeout': [10.0], 'client_header_timeout': [10.0], 'client_body_timeout': [10.0]}
+[PASS] 5.2.2 Explicit positive HTTP request body size: client_max_body_size=['2M']; explicit HTTP limit=True
+[PASS] 5.2.3 Header buffers default or documented 4 8k: large_client_header_buffers=[['4', '8k']]; absent uses NGINX default
+[PASS] 5.3.1 X-Content-Type-Options present with always on HTTP 200 and 404: config always=True; HTTP200=['nosniff']; HTTP404=['nosniff']
+[PASS] 5.3.3 Referrer-Policy present with always on HTTP 200 and 404: config always=True; HTTP200=['strict-origin-when-cross-origin']; HTTP404=['strict-origin-when-cross-origin']
+SUMMARY {"PASS": 5, "FAIL": 0, "ERROR": 0, "REVIEW": 0}

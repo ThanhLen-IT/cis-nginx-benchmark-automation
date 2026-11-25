@@ -1,33 +1,71 @@
-# Luồng chương trình và cách viết chương 2
+# Cấu trúc và logic Ansible-native
 
-`cisctl` gọi `scripts/runner.py`. Bộ điều phối nhận action, section và run ID; khóa các lần chạy local đồng thời, tạo manifest và kiểm tra quyền sudo.
+```text
+site.yml                         Local entry point
+playbooks/remote.yml              Remote entry point
+playbooks/workflow.yml            audit/remediate/run theo host
+playbooks/tasks/                  identity, stage, remediation, idempotence, summary
+playbooks/templates/              JSON/CSV tổng hợp và source hash
+roles/cis_audit/defaults/         lựa chọn audit và ngưỡng chính sách
+roles/cis_audit/vars/main.yml     30 định nghĩa tiêu chí: passed/error/review/detail
+roles/cis_audit/tasks/collect.yml command đọc NGINX/APT/socket/find
+roles/cis_audit/tasks/probes.yml  account/stat/HTTP/TLS
+roles/cis_audit/templates/        lexer Jinja giữ quote/comment/block/include; báo cáo
+roles/nginx_cis/                  role khắc phục: defaults/tasks/templates/handlers
+inventory/                       Local và mẫu bốn EC2
+config/workflow.yml               action/scope/stage/run ID
+config/lab.example.yml            biến chính sách/site có thể tùy chỉnh
+ tests/                          fixture YAML và native regression playbooks
+```
 
-## Audit
+Không còn `audit/*.py`, `scripts/*.py`, custom filter/module/callback Python hoặc CLI cisctl.
+Chỉ cần ansible-core và module tích hợp. Core/module Ansible vẫn dựa trên Python.
 
-`audit/collect.py` chạy read-only tại máy đích, thu `nginx -V`, `nginx -T`, `ss`, `apt-cache policy`. Cả stdout, stderr và exit code được lưu trong raw/.
-`audit/engine.py` dùng Python chuẩn: bỏ comment, phân tích block/directive và include; đọc quyền/tài khoản, so sánh timeout/dung lượng và thử HTTP/TLS. Trạng thái theo từng CIS ID được xuất JSON, CSV, TXT.
-Before và after dùng cùng engine. Cấu hình không đọc được không biến thành PASS nhờ giá trị mặc định. Header cần có ở phản hồi đúng 200/404; TLS cần có handshake TLS 1.3 và từ chối TLS 1.2.
-Các kiểm tra HTTP nhắm tới website lab được chọn; repo không phải bộ kiểm toán tổng quát mọi kiến trúc proxy/load balancer. Cipher TLS 1.3 và DH được đánh giá theo cấu hình TLS 1.3-only trong tài liệu benchmark được nhóm cung cấp.
+## Luồng sau Enter
 
-## Remediation
+```mermaid
+flowchart TD
+  A[Đọc inventory và biến] --> B[Kiểm tra mode và manifest]
+  B --> C{Action}
+  C -->|audit| D[Thu thập và đánh giá stage]
+  C -->|remediate| E[Đọc before hợp lệ]
+  C -->|run| F[Audit before]
+  F --> G{Có ERROR?}
+  G -->|Có| Z[Lưu lỗi host]
+  G -->|Không| E
+  E --> H[Áp dụng role cấu hình]
+  H --> I{Action run?}
+  I -->|Có| J[Audit after]
+  I -->|Không| K[Lưu remediation result]
+  J --> L{Yêu cầu lũy đẳng?}
+  L -->|Có| M[Áp dụng lần hai và audit lại]
+  L -->|Không| N[Tổng hợp theo host]
+  M --> N
+  D --> N
+  K --> N
+  Z --> N
+```
 
-`site.yml` gọi role. Preflight kiểm tra Ubuntu 24.04 hoặc 26.04 và transport đúng chế độ và nạp profile. Section 1 chọn codename theo facts (noble/resolute), cấu hình nguồn gói chính thức và nâng cấp NGINX; section 2 quản lý tài khoản/quyền; section 3 log; section 4 vật liệu TLS; section 5 kiểm tra policy request.
-Template `nginx.conf.j2` là nguồn cấu hình duy nhất được nạp; không include cấu hình website cũ để tránh directive xung đột. Các tệp cũ được giữ và backup, nhưng không còn được include bởi cấu hình lab mới.
-Role render candidate, chạy `nginx -t -c ...` rồi mới copy vào nginx.conf. Hai handler cùng listen một sự kiện: validate chạy trước reload. Profile chỉ được ghi sau triển khai thành công.
-Ansible không đọc CSV để chỉ chạy các dòng FAIL. Module so sánh trạng thái hệ thống với khai báo trong phạm vi/profile đã chọn.
+Audit: command/stat lấy dữ liệu bằng `register`; Jinja lexer phân tích `nginx -T` theo block,
+giữ include context; `set_fact` tính kết quả từng tiêu chí; template ghi report tại controller.
+Không dùng `assert` cho từng FAIL vì cần tiếp tục đủ tiêu chí; assert cuối quy trình trả nonzero.
 
-## Điều phối lỗi
+Remediation giữ cách hoạt động đã học: preflight → role section tích lũy → render candidate →
+nginx -t → copy nếu khác → notify validate/reload → kiểm tra service → lưu profile.
+Không đọc CSV để chỉ chạy FAIL. Tác vụ mutation có thêm notify `Record remediation change` để
+đánh dấu thay đổi thực khi kiểm tra lũy đẳng. Công việc ghi báo cáo không tham gia phép đo này.
 
-`run`: audit before → remediation → audit after → tùy chọn chạy lại remediation và audit lần nữa.
-Baseline FAIL cho phép khắc phục; baseline ERROR dừng trước thay đổi. Nếu remediation lỗi, vẫn thử audit sau để chẩn đoán và trả mã lỗi thực thi.
-Idempotence dùng số liệu thật của callback Ansible; không ép changed=0 bằng cách bỏ qua thay đổi.
+## Phạm vi
 
-## Hướng viết chương 3
+| Section | CIS ID | Số |
+|---|---|---:|
+|1|1.1.1, 1.2.1, 1.2.2|3|
+|2|2.1.1, 2.2.1–2.2.3, 2.3.1–2.3.3, 2.4.1–2.4.4, 2.5.1–2.5.3|14|
+|3|3.1–3.3|3|
+|4|4.1.1, 4.1.3–4.1.6|5|
+|5|5.2.1–5.2.3, 5.3.1, 5.3.3|5|
 
-Ghi lệnh → đầu ra → nhận xét theo CIS ID. Dùng cùng run ID cho before/after, ghi commit, host và scope. Các mục code/logic thuộc chương 2; bảng Manual theo docs/MANUAL.md. Không điền kết quả PASS giả hoặc dùng fixture test làm kết quả thực nghiệm.
-
-## Remote qua SSH
-
-`runner.py` chuyển chế độ remote sang `scripts/remote.py`; không audit trên controller. Runner đọc inventory, khóa chạy đồng thời, giữ manifest bất biến theo source/inventory/vars/scope/hosts. Với mỗi alias, `remote-audit.yml` chép collector/engine lên máy đích, chạy với become và fetch bằng chứng. Runner xác minh đủ CIS ID, Status/counts và mã trả về thật trước khi khắc phục. `remote-remediate.yml` gọi role chung bằng SSH, còn `site.yml` vẫn chặn SSH để giữ entry point Local.
-
-Host có ERROR hoặc thiếu before không được khắc phục. Lỗi một host không ngăn các host còn lại. Recap được giữ riêng theo giai đoạn; re-audit sau lần chạy lại vẫn chạy kể cả changed > 0. Tổng hợp có expected/missing hosts và không giả tạo dòng tiêu chí khi chưa thu được audit. Chi tiết luồng, CLI và bàn giao tại [REMOTE.md](REMOTE.md).
+Điều kiện cụ thể và lý do/ERROR/REVIEW nằm trực tiếp ở `roles/cis_audit/vars/main.yml`.
+Đây là đánh giá phạm vi lab/website được chọn, không phải bộ chứng nhận mọi cấu hình NGINX.
+Nguồn yêu cầu: CIS NGINX Benchmark v3.0.0. API thực thi:
+https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/index.html

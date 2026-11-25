@@ -1,0 +1,47 @@
+---
+- name: Construct reproducibility manifest without SSH credentials
+  ansible.builtin.set_fact:
+    cis_identity:
+      implementation: ansible-native-v1
+      code_sha256: "{{ lookup('ansible.builtin.template', '../templates/code-hash.j2') }}"
+      selected_hosts: '{{ ansible_play_hosts_all | sort }}'
+      run_id: '{{ cis_run_id }}'
+      inventory_alias: '{{ inventory_hostname }}'
+      address: '{{ ansible_host | default(inventory_hostname) }}'
+      connection: '{{ ansible_connection | default("ssh") }}'
+      mode: '{{ cis_entry_mode }}'
+      sections: '{{ cis_audit_sections }}'
+      policy_sha256: "{{ vars | dict2items | selectattr('key','match','^nginx_cis_') | sort(attribute='key') | to_json | hash('sha256') }}"
+- name: Create per-host evidence directory on controller
+  ansible.builtin.file:
+    path: '{{ cis_host_evidence }}'
+    state: directory
+    mode: '0750'
+  delegate_to: localhost
+  become: false
+- name: Check existing manifest on controller
+  ansible.builtin.stat:
+    path: '{{ cis_host_evidence }}/manifest.json'
+  register: cis_manifest_stat
+  delegate_to: localhost
+  become: false
+- name: Read existing controller manifest
+  ansible.builtin.slurp:
+    src: '{{ cis_host_evidence }}/manifest.json'
+  register: cis_saved_manifest
+  when: cis_manifest_stat.stat.exists
+  delegate_to: localhost
+  become: false
+- name: Reject reuse with different identity or policy
+  ansible.builtin.assert:
+    that: cis_saved_manifest.content | b64decode | from_json == cis_identity
+  when: cis_manifest_stat.stat.exists
+- name: Preserve first manifest
+  ansible.builtin.copy:
+    dest: '{{ cis_host_evidence }}/manifest.json'
+    content: '{{ cis_identity | to_nice_json }}
+'
+    force: false
+    mode: '0640'
+  delegate_to: localhost
+  become: false

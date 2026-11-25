@@ -1,0 +1,141 @@
+- name: Test native audit against disposable real NGINX without touching system config
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    cis_test_binary: '{{ lookup("ansible.builtin.env", "NGINX_TEST_BINARY") }}'
+    cis_http_port: 18080
+    cis_https_port: 18443
+    cis_probe_host: cis.local
+    cis_run_id: live-test
+    cis_audit_sections:
+    - 5
+    cis_fixture: false
+  tasks:
+  - name: Require an explicit real NGINX test binary
+    ansible.builtin.assert:
+      that: cis_test_binary | length > 0
+  - name: Create isolated prefix
+    ansible.builtin.tempfile:
+      state: directory
+      suffix: cis-nginx-native
+    register: cis_prefix
+  - name: Exercise actual HTTP TLS and audit evaluation
+    block:
+    - name: Create isolated binary directory
+      ansible.builtin.file:
+        path: '{{ cis_prefix.path }}/bin'
+        state: directory
+        mode: '0755'
+    - name: Add test-only command wrapper selecting isolated configuration
+      ansible.builtin.copy:
+        dest: '{{ cis_prefix.path }}/bin/nginx'
+        mode: '0755'
+        content: '#!/bin/sh
+
+          exec {{ cis_test_binary | quote }} -p {{ cis_prefix.path | quote }} -c {{ (cis_prefix.path ~ ''/nginx.conf'') |
+          quote }} "$@"
+
+          '
+    - name: Create neutral test website
+      ansible.builtin.copy:
+        dest: '{{ cis_prefix.path }}/index.html'
+        content: Lab service
+        mode: '0644'
+    - name: Generate disposable TLS pair
+      ansible.builtin.command:
+        argv:
+        - openssl
+        - req
+        - -x509
+        - -nodes
+        - -newkey
+        - rsa:2048
+        - -days
+        - '1'
+        - -subj
+        - /CN=cis.local
+        - -keyout
+        - '{{ cis_prefix.path }}/lab.key'
+        - -out
+        - '{{ cis_prefix.path }}/lab.crt'
+      changed_when: true
+      no_log: true
+    - name: Write baseline isolated configuration
+      ansible.builtin.template:
+        src: live.conf.j2
+        dest: '{{ cis_prefix.path }}/nginx.conf'
+      vars:
+        cis_test_hardened: false
+    - name: Start isolated NGINX
+      ansible.builtin.command:
+        argv:
+        - '{{ cis_test_binary }}'
+        - -p
+        - '{{ cis_prefix.path }}'
+        - -c
+        - '{{ cis_prefix.path }}/nginx.conf'
+      changed_when: true
+    - name: Audit actual baseline using native tasks
+      ansible.builtin.include_role:
+        name: cis_audit
+        apply:
+          environment:
+            PATH: '{{ cis_prefix.path }}/bin:{{ lookup("ansible.builtin.env","PATH") }}'
+      vars:
+        cis_stage: before
+        cis_audit_config_dir: '{{ cis_prefix.path }}'
+        cis_host_evidence: '{{ cis_prefix.path }}/evidence'
+    - name: Require baseline header control to fail
+      ansible.builtin.assert:
+        that: (cis_results | selectattr('cis_id','equalto','5.3.3') | first).status == 'FAIL'
+    - name: Write hardened isolated configuration
+      ansible.builtin.template:
+        src: live.conf.j2
+        dest: '{{ cis_prefix.path }}/nginx.conf'
+      vars:
+        cis_test_hardened: true
+    - name: Validate and reload isolated NGINX
+      ansible.builtin.command:
+        argv:
+        - '{{ cis_test_binary }}'
+        - -p
+        - '{{ cis_prefix.path }}'
+        - -c
+        - '{{ cis_prefix.path }}/nginx.conf'
+        - -s
+        - reload
+      changed_when: true
+    - name: Audit actual hardened website with HTTP 200 and 404
+      ansible.builtin.include_role:
+        name: cis_audit
+        apply:
+          environment:
+            PATH: '{{ cis_prefix.path }}/bin:{{ lookup("ansible.builtin.env","PATH") }}'
+      vars:
+        cis_stage: after
+        cis_audit_config_dir: '{{ cis_prefix.path }}'
+        cis_host_evidence: '{{ cis_prefix.path }}/evidence'
+    - name: Require all five request controls to pass
+      ansible.builtin.assert:
+        that:
+        - cis_audit_report.source == 'live'
+        - cis_audit_report.counts.PASS == 5
+    always:
+    - name: Stop isolated NGINX
+      ansible.builtin.command:
+        argv:
+        - '{{ cis_test_binary }}'
+        - -p
+        - '{{ cis_prefix.path }}'
+        - -c
+        - '{{ cis_prefix.path }}/nginx.conf'
+        - -s
+        - quit
+      failed_when: false
+      changed_when: false
+    - name: Remove temporary test-only files
+      ansible.builtin.file:
+        path: '{{ cis_prefix.path }}'
+        state: absent

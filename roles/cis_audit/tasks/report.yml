@@ -1,0 +1,67 @@
+---
+- name: Build stage identity and status counts
+  ansible.builtin.set_fact:
+    cis_audit_report:
+      benchmark: CIS NGINX v3.0.0
+      timestamp: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      source: "{{ 'fixture' if cis_fixture | bool else 'live' }}"
+      implementation: ansible-native
+      run_id: '{{ cis_run_id }}'
+      inventory_alias: '{{ inventory_hostname }}'
+      hostname: '{{ ansible_facts.hostname | default(inventory_hostname) }}'
+      stage: '{{ cis_stage }}'
+      sections: '{{ cis_audit_sections }}'
+      probe_host: '{{ cis_target_host }}'
+      counts:
+        PASS: "{{ cis_results | selectattr('status','equalto','PASS') | list | length }}"
+        FAIL: "{{ cis_results | selectattr('status','equalto','FAIL') | list | length }}"
+        ERROR: "{{ cis_results | selectattr('status','equalto','ERROR') | list | length }}"
+        REVIEW: "{{ cis_results | selectattr('status','equalto','REVIEW') | list | length }}"
+      results: '{{ cis_results }}'
+- name: Create controller stage evidence directory
+  ansible.builtin.file:
+    path: '{{ cis_host_evidence }}/{{ cis_stage }}/raw'
+    state: directory
+    mode: '0750'
+  delegate_to: localhost
+  become: false
+- name: Save JSON and raw observations without private key content
+  ansible.builtin.copy:
+    dest: '{{ cis_host_evidence }}/{{ cis_stage }}/{{ item.name }}'
+    content: '{{ item.data | to_nice_json }}
+'
+    mode: '0640'
+  loop:
+    - {name: audit.json, data: '{{ cis_audit_report }}'}
+    - name: raw/collected.json
+      data:
+        nginx_T: '{{ cis_nginx_t }}'
+        nginx_V: '{{ cis_nginx_v }}'
+        apt_policy: '{{ cis_apt }}'
+        sockets: '{{ cis_sockets }}'
+        owners: '{{ cis_owners }}'
+        modes: '{{ cis_modes }}'
+        account: '{{ cis_account }}'
+        pid: '{{ cis_pid }}'
+        keys: '{{ cis_keys }}'
+        probes: '{{ cis_probe_results }}'
+        tls13: '{{ cis_tls13 }}'
+        tls12: '{{ cis_tls12 }}'
+        parsed: '{{ cis_parsed }}'
+  loop_control:
+    label: '{{ item.name }}'
+  delegate_to: localhost
+  become: false
+- name: Render CSV and readable stage report on controller
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '{{ cis_host_evidence }}/{{ cis_stage }}/{{ item.dest }}'
+    mode: '0640'
+  loop:
+    - {src: audit.csv.j2, dest: audit-summary.csv}
+    - {src: audit.txt.j2, dest: audit-report.txt}
+  delegate_to: localhost
+  become: false
+- name: Keep stage result for workflow comparison
+  ansible.builtin.set_fact:
+    cis_stage_reports: '{{ cis_stage_reports | default({}) | combine({cis_stage: cis_audit_report}) }}'

@@ -1,0 +1,34 @@
+---
+- name: Read NGINX compiled version
+  ansible.builtin.command: nginx -V
+  register: cis_nginx_v
+  changed_when: false
+  failed_when: false
+- name: Read complete NGINX configuration
+  ansible.builtin.command: nginx -T
+  register: cis_nginx_t
+  changed_when: false
+  failed_when: false
+- name: Read NGINX APT package state
+  ansible.builtin.command: apt-cache policy nginx
+  environment: {LC_ALL: C}
+  register: cis_apt
+  changed_when: false
+  failed_when: false
+- name: Read listening sockets with owning processes
+  ansible.builtin.command: ss -lntp
+  register: cis_sockets
+  changed_when: false
+  failed_when: false
+- name: Find configuration ownership violations without following links
+  ansible.builtin.command:
+    argv: [find, '{{ cis_audit_config_dir }}', '(', '!', -user, root, -o, '!', -group, root, ')', -print]
+  register: cis_owners
+  changed_when: false
+  failed_when: false
+- name: Find configuration mode violations without following links
+  ansible.builtin.command:
+    argv: [find, '{{ cis_audit_config_dir }}', '(', -type, d, -perm, /027, -o, -type, f, -perm, /137, ')', -print]
+  register: cis_modes
+  changed_when: false
+  failed_when: false

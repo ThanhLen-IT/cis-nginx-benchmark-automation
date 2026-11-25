@@ -1,0 +1,16 @@
+---
+- name: Reload completed stages for split invocation summary
+  ansible.builtin.set_fact:
+    cis_stage_reports: "{{ cis_stage_reports | default({}) | combine({item: ((lookup('ansible.builtin.file', cis_host_evidence ~ '/' ~ item ~ '/audit.json') | from_json) if query('ansible.builtin.fileglob', cis_host_evidence ~ '/' ~ item ~ '/audit.json') | length else {})}) }}"
+  loop: [before, after, after-idempotence]
+- name: Calculate host outcome without treating an empty report as PASS
+  ansible.builtin.set_fact:
+    cis_host_summary: "{{ lookup('ansible.builtin.template', '../templates/host-summary.json.j2') | from_json }}"
+- name: Save per-host summary on controller
+  ansible.builtin.copy:
+    dest: '{{ cis_host_evidence }}/summary.json'
+    content: '{{ cis_host_summary | to_nice_json }}
+'
+    mode: '0640'
+  delegate_to: localhost
+  become: false

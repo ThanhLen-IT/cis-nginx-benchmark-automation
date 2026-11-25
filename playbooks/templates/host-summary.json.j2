@@ -1,0 +1,13 @@
+{% set ns = namespace(outcome='PASS', comparison=[]) %}
+{% set relevant = cis_stage_reports.get('after-idempotence') or cis_stage_reports.get('after') or cis_stage_reports.get('before') or {} %}
+{% if not relevant or cis_execution_error | default('') %}{% set ns.outcome = 'ERROR' %}
+{% elif relevant.counts.ERROR | int > 0 %}{% set ns.outcome = 'ERROR' %}
+{% elif relevant.counts.FAIL | int > 0 or relevant.counts.REVIEW | int > 0 or (cis_action == 'run' and cis_idempotence | bool and not cis_idempotent | default(false)) %}{% set ns.outcome = 'FAIL' %}{% endif %}
+{% if cis_action == 'remediate' and not cis_execution_error | default('') %}{% set ns.outcome = 'REMEDIATED_NOT_REAUDITED' %}{% endif %}
+{% if cis_stage_reports.get('before') and cis_stage_reports.get('after') %}
+{% for b in cis_stage_reports.before.results %}
+{% set a = cis_stage_reports.after.results | selectattr('cis_id','equalto',b.cis_id) | first %}
+{% set ns.comparison = ns.comparison + [{'cis_id':b.cis_id,'before':b.status,'after':a.status}] %}
+{% endfor %}
+{% endif %}
+{{ {'host':inventory_hostname,'run_id':cis_run_id,'mode':cis_entry_mode,'action':cis_action,'sections':cis_audit_sections,'outcome':ns.outcome,'execution_error':cis_execution_error | default(''),'stages':cis_stage_reports,'comparison':ns.comparison,'idempotent':cis_idempotent | default(none)} | to_json }}

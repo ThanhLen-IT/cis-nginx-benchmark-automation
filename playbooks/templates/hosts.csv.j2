@@ -1,0 +1,5 @@
+Host,Outcome,ExecutionError
+{% for h in ansible_play_hosts_all %}
+{% set r = hostvars[h].cis_host_summary | default({'outcome':'ERROR','execution_error':'Missing summary'}) %}
+"{{ h }}","{{ r.outcome }}","{{ r.execution_error | replace('"','""') }}"
+{% endfor %}

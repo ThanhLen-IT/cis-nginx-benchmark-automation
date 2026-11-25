@@ -1,0 +1,5 @@
+---
+- name: Remote Ansible CIS workflow
+  ansible.builtin.import_playbook: workflow.yml
+  vars:
+    cis_entry_mode: remote

@@ -1,0 +1,22 @@
+---
+- name: Initialise one audit stage
+  ansible.builtin.set_fact:
+    cis_results: []
+    cis_bad_keys: []
+- name: Collect live system evidence
+  ansible.builtin.include_tasks: collect.yml
+  when: not cis_fixture | bool
+- name: Parse configuration with the Jinja lexer
+  ansible.builtin.set_fact:
+    cis_parsed: "{{ lookup('ansible.builtin.template', 'parse-config.json.j2') | from_json }}"
+- name: Derive facts from collected evidence
+  ansible.builtin.include_tasks: facts.yml
+- name: Evaluate selected CIS controls
+  ansible.builtin.include_tasks: checks.yml
+- name: Require complete distinct control coverage
+  ansible.builtin.assert:
+    that:
+      - cis_results | map(attribute='cis_id') | unique | length == cis_results | length
+      - cis_results | length == cis_catalog | selectattr('section', 'in', cis_audit_sections) | list | length
+- name: Save stage report and raw evidence on controller
+  ansible.builtin.include_tasks: report.yml

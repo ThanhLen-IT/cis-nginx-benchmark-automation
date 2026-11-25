@@ -1,0 +1,4 @@
+CIS_ID,Group,Control,Status,Detail
+{% for r in cis_results %}
+"{{ r.cis_id }}","{{ r.group }}","{{ r.control | replace('"','""') }}","{{ r.status }}","{{ r.detail | replace('"','""') }}"
+{% endfor %}
