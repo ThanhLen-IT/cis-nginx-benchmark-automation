@@ -1,0 +1,19 @@
+---
+- name: Require real SSH pass plus explicit unreachable host error
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars:
+    result: '{{ lookup("ansible.builtin.file", playbook_dir ~ "/../evidence/ci-native-ssh/summary.json") | from_json }}'
+  tasks:
+    - name: Require complete real live outcome and no fabricated unreachable audit
+      ansible.builtin.assert:
+        that:
+          - result.expected_hosts == 2
+          - result.hosts['ci-live'].outcome == 'PASS'
+          - result.hosts['ci-live'].idempotent
+          - result.hosts['ci-live'].stages.after.counts.PASS == 30
+          - result.hosts['ci-live'].stages['after-idempotence'].counts.PASS == 30
+          - result.hosts['ci-unreachable'].outcome == 'ERROR'
+          - not result.hosts['ci-unreachable'].stages.before

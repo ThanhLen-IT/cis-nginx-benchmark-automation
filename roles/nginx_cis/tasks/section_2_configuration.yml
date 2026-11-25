@@ -1,30 +1,36 @@
----
 - name: CIS 2.2 create service group
   ansible.builtin.group:
     name: nginx
     system: true
+  notify:
+  - Record remediation change
 - name: CIS 2.2.1 to 2.2.3 restrict dedicated worker account
   ansible.builtin.user:
     name: nginx
     group: nginx
-    groups: ""
+    groups: ''
     append: false
     system: true
     create_home: false
     home: /nonexistent
     shell: /usr/sbin/nologin
     password_lock: true
+  notify:
+  - Record remediation change
 - name: CIS 2.2.1 check sudo permissions
   ansible.builtin.command: sudo -n -l -U nginx
-  environment: {LC_ALL: C}
+  environment:
+    LC_ALL: C
   register: cis_sudo
   changed_when: false
   failed_when: false
+  notify:
+  - Record remediation change
 - name: CIS 2.2.1 require removal of unexpected sudo grants
   ansible.builtin.assert:
     that:
-      - "'not allowed to run sudo' in (cis_sudo.stdout + cis_sudo.stderr)"
-    fail_msg: "Remove unexpected nginx sudo grants before continuing."
+    - '''not allowed to run sudo'' in (cis_sudo.stdout + cis_sudo.stderr)'
+    fail_msg: Remove unexpected nginx sudo grants before continuing.
 - name: CIS 2.3 find config objects
   ansible.builtin.find:
     paths: /etc/nginx
@@ -35,24 +41,32 @@
   register: cis_config_tree
 - name: CIS 2.3 protect config objects
   ansible.builtin.file:
-    path: "{{ item.path }}"
+    path: '{{ item.path }}'
     owner: root
     group: root
     follow: false
-    mode: "{{ '0750' if item.isdir else ('0400' if item.path == nginx_cis_tls_private_key else '0640') }}"
-  loop: "{{ cis_config_tree.files | rejectattr('islnk') | list }}"
-  loop_control: {label: "{{ item.path }}"}
+    mode: '{{ ''0750'' if item.isdir else (''0400'' if item.path == nginx_cis_tls_private_key else ''0640'') }}'
+  loop: '{{ cis_config_tree.files | rejectattr(''islnk'') | list }}'
+  loop_control:
+    label: '{{ item.path }}'
+  notify:
+  - Record remediation change
 - name: CIS 2.3.2 protect configuration root
   ansible.builtin.file:
     path: /etc/nginx
     owner: root
     group: root
-    mode: "0750"
+    mode: '0750'
+  notify:
+  - Record remediation change
 - name: CIS 2.3.1 protect symbolic link ownership without following targets
   ansible.builtin.file:
-    path: "{{ item.path }}"
+    path: '{{ item.path }}'
     owner: root
     group: root
     follow: false
-  loop: "{{ cis_config_tree.files | selectattr('islnk') | list }}"
-  loop_control: {label: "{{ item.path }}"}
+  loop: '{{ cis_config_tree.files | selectattr(''islnk'') | list }}'
+  loop_control:
+    label: '{{ item.path }}'
+  notify:
+  - Record remediation change

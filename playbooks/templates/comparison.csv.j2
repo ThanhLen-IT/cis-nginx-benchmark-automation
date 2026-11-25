@@ -1,0 +1,6 @@
+Host,CIS_ID,Before,After
+{% for h in ansible_play_hosts_all %}
+{% for r in hostvars[h].cis_host_summary.comparison | default([]) %}
+"{{ h }}","{{ r.cis_id }}","{{ r.before }}","{{ r.after }}"
+{% endfor %}
+{% endfor %}

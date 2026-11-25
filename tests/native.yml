@@ -1,0 +1,12 @@
+---
+- name: Ansible-native audit regressions with fixture-labelled evidence
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars_files: [cases.yml]
+  tasks:
+    - name: Exercise independent audit cases
+      ansible.builtin.include_tasks: case.yml
+      loop: '{{ native_cases }}'
+      loop_control: {loop_var: native_case, label: '{{ native_case.name }}'}

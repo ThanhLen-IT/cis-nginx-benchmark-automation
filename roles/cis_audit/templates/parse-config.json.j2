@@ -1,0 +1,53 @@
+{# A quote-aware NGINX lexer in Jinja. No Python script/filter plugin.
+   Preserve include context in nginx -T order; do not flatten directives across scopes. #}
+{% set ns = namespace(chunks=[], path='', lines=[], records=[], blocks=[], includes=[], errors=[]) %}
+{% for line in cis_nginx_t.stdout.splitlines() %}
+{% if line is match('^# configuration file .+:$') %}
+{% if ns.lines %}{% set ns.chunks = ns.chunks + [{'path': ns.path, 'text': ns.lines | join('\n')}] %}{% endif %}
+{% set ns.path = line[21:-1] %}{% set ns.lines = [] %}
+{% else %}{% set ns.lines = ns.lines + [line] %}{% endif %}
+{% endfor %}
+{% if ns.lines %}{% set ns.chunks = ns.chunks + [{'path': ns.path, 'text': ns.lines | join('\n')}] %}{% endif %}
+{% for chunk in ns.chunks %}
+{% set f = namespace(base=[], stack=[], tokens=[], word='', quote='', escape=false, comment=false, count=0) %}
+{% for inc in ns.includes %}
+{% set pattern = inc.path | regex_escape | replace('\\*', '.*') | replace('\\?', '.') %}
+{% if chunk.path is match('^' ~ pattern ~ '$') %}{% set f.base = inc.context %}{% endif %}
+{% endfor %}
+{% set f.stack = f.base %}
+{% for ch in chunk.text ~ '\n' %}
+{% if f.comment %}
+{% if ch == '\n' %}{% set f.comment = false %}{% endif %}
+{% elif f.escape %}
+{% set f.word = f.word ~ ch %}{% set f.escape = false %}
+{% elif ch == '\\' %}
+{% set f.word = f.word ~ ch %}{% set f.escape = true %}
+{% elif f.quote %}
+{% if ch == f.quote %}{% set f.quote = '' %}{% else %}{% set f.word = f.word ~ ch %}{% endif %}
+{% elif ch in ['"', "'"] %}{% set f.quote = ch %}
+{% elif ch == '#' %}{% set f.comment = true %}
+{% elif ch in [' ', '\t', '\n', '\r', ';', '{', '}'] %}
+{% if f.word %}{% set f.tokens = f.tokens + [f.word] %}{% set f.word = '' %}{% endif %}
+{% if ch == ';' and f.tokens %}
+{% set rec = {'name':f.tokens[0], 'args':f.tokens[1:], 'context':f.stack, 'source':chunk.path} %}
+{% set ns.records = ns.records + [rec] %}
+{% if f.tokens[0] == 'include' and f.tokens | length == 2 %}
+{% set incpath = f.tokens[1] if f.tokens[1].startswith('/') else cis_audit_config_dir ~ '/' ~ f.tokens[1] %}
+{% set ns.includes = ns.includes + [{'path':incpath, 'context':f.stack}] %}
+{% endif %}{% set f.tokens = [] %}
+{% elif ch == '{' %}
+{% set f.count = f.count + 1 %}
+{% set block = {'name':f.tokens[0] | default('unknown'), 'args':f.tokens[1:], 'id':chunk.path ~ ':' ~ f.count} %}
+{% set f.stack = f.stack + [block] %}
+{% set ns.blocks = ns.blocks + [{'block':block, 'context':f.stack}] %}{% set f.tokens = [] %}
+{% elif ch == '}' %}
+{% if f.stack | length <= f.base | length %}{% set ns.errors = ns.errors + ['unbalanced block in ' ~ chunk.path] %}
+{% else %}{% set f.stack = f.stack[:-1] %}{% endif %}
+{% set f.tokens = [] %}
+{% endif %}
+{% else %}{% set f.word = f.word ~ ch %}
+{% endif %}
+{% endfor %}
+{% if f.quote or f.stack | length != f.base | length or f.tokens %}{% set ns.errors = ns.errors + ['incomplete parse in ' ~ chunk.path] %}{% endif %}
+{% endfor %}
+{{ {'directives':ns.records, 'blocks':ns.blocks, 'errors':ns.errors} | to_json }}

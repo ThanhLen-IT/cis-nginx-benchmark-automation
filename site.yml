@@ -1,8 +1,5 @@
 ---
-- name: Harden NGINX according to CIS NGINX Benchmark v3.0.0
-  hosts: nginx_servers
-  become: true
-  gather_facts: true
-
-  roles:
-    - role: nginx_cis
+- name: Local Ansible CIS workflow
+  ansible.builtin.import_playbook: playbooks/workflow.yml
+  vars:
+    cis_entry_mode: local

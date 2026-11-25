@@ -1,0 +1,245 @@
+native_cases:
+- name: all30
+  expected:
+    1.1.1: PASS
+    1.2.1: PASS
+    1.2.2: PASS
+    2.1.1: PASS
+    2.2.1: PASS
+    2.2.2: PASS
+    2.2.3: PASS
+    2.3.1: PASS
+    2.3.2: PASS
+    2.3.3: PASS
+    2.4.1: PASS
+    2.4.2: PASS
+    2.4.3: PASS
+    2.4.4: PASS
+    2.5.1: PASS
+    2.5.2: PASS
+    2.5.3: PASS
+    '3.1': PASS
+    '3.2': PASS
+    '3.3': PASS
+    4.1.1: PASS
+    4.1.3: PASS
+    4.1.4: PASS
+    4.1.5: PASS
+    4.1.6: PASS
+    5.2.1: PASS
+    5.2.2: PASS
+    5.2.3: PASS
+    5.3.1: PASS
+    5.3.3: PASS
+  overrides: {}
+- name: invalid config
+  expected:
+    5.3.3: ERROR
+    1.1.1: PASS
+  overrides:
+    cis_nginx_t:
+      stdout: ''
+      rc: 1
+      stderr: permission denied
+- name: uninstalled nginx
+  expected:
+    1.1.1: FAIL
+    5.3.3: FAIL
+  overrides:
+    cis_nginx_t:
+      stdout: ''
+      rc: 2
+      stderr: ''
+    cis_nginx_v:
+      stdout: ''
+      rc: 2
+      stderr: ''
+- name: buffer context review
+  expected:
+    5.2.3: REVIEW
+  overrides:
+    cis_nginx_t:
+      stdout: "# configuration file /etc/nginx/nginx.conf:\nuser nginx;\npid /run/nginx.pid;\nerror_log /var/log/nginx/error.log\
+        \ info;\nevents { worker_connections 1024; }\nhttp {\n server_tokens off;\n keepalive_timeout 10s;\n send_timeout\
+        \ 10s;\n client_header_timeout 10s;\n client_body_timeout 10s;\n client_max_body_size 2M;\n large_client_header_buffers\
+        \ 8 16k;\n add_header X-Content-Type-Options \"nosniff\" always;\n add_header Referrer-Policy \"strict-origin-when-cross-origin\"\
+        \ always;\n log_format cis_json escape=json '{\"timestamp\":\"$time_iso8601\",\"remote_addr\":\"$remote_addr\",\"\
+        remote_user\":\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\",\"request\":\"$request\"}';\n\
+        \ access_log /var/log/nginx/access.json cis_json;\n ssl_protocols TLSv1.3;\n server { listen 80 default_server; server_name\
+        \ _; return 444; }\n server { listen 443 ssl default_server; server_name _; ssl_reject_handshake on; }\n server {\
+        \ listen 80; server_name cis.local; return 301 https://cis.local$request_uri; }\n server {\n  listen 443 ssl;\n  server_name\
+        \ cis.local;\n  ssl_certificate /etc/nginx/ssl/cis-lab.crt;\n  ssl_certificate_key /etc/nginx/ssl/cis-lab.key;\n \
+        \ error_page 404 /404.html;\n  location ~ /\\.(?!well-known(?:/|$)) { deny all; }\n  location / { try_files $uri $uri/\
+        \ =404; }\n }\n}\n"
+      rc: 0
+      stderr: ''
+- name: configured header absent on live 404
+  expected:
+    5.3.3: FAIL
+  overrides:
+    cis_probe_results:
+      root:
+        stdout: "HTTP/1.1 200 OK\r\nServer: nginx\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nX-Content-Type-Options:\
+          \ nosniff\r\n\r\nLab service"
+        rc: 0
+        stderr: ''
+      not_found:
+        stdout: "HTTP/1.1 404 Not Found\r\n\r\nNot found"
+        rc: 0
+        stderr: ''
+      hidden: &id001
+        stdout: "HTTP/1.1 403 Forbidden\r\n\r\nDenied"
+        rc: 0
+        stderr: ''
+      http: &id002
+        stdout: "HTTP/1.1 301 Moved\r\nLocation: https://cis.local/\r\n\r\n"
+        rc: 0
+        stderr: ''
+      invalid_http: &id003
+        stdout: ''
+        rc: 52
+        stderr: ''
+      invalid_tls: &id004
+        stdout: ''
+        rc: 35
+        stderr: ''
+- name: connection failure is error
+  expected:
+    5.3.1: ERROR
+    5.3.3: ERROR
+  overrides:
+    cis_probe_results:
+      root:
+        stdout: ''
+        rc: 7
+        stderr: ''
+      not_found:
+        stdout: "HTTP/1.1 404 Not Found\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nX-Content-Type-Options: nosniff\r\
+          \n\r\nNot found"
+        rc: 0
+        stderr: ''
+      hidden: *id001
+      http: *id002
+      invalid_http: *id003
+      invalid_tls: *id004
+- name: timeouts override
+  expected:
+    5.2.1: FAIL
+    2.4.4: FAIL
+  overrides:
+    cis_nginx_t:
+      stdout: "# configuration file /etc/nginx/nginx.conf:\nuser nginx;\npid /run/nginx.pid;\nerror_log /var/log/nginx/error.log\
+        \ info;\nevents { worker_connections 1024; }\nhttp {\n server_tokens off;\n keepalive_timeout 10s;\n send_timeout\
+        \ 10s;\n server { send_timeout 60s; }\n client_header_timeout 10s;\n client_body_timeout 10s;\n client_max_body_size\
+        \ 2M;\n large_client_header_buffers 4 8k;\n add_header X-Content-Type-Options \"nosniff\" always;\n add_header Referrer-Policy\
+        \ \"strict-origin-when-cross-origin\" always;\n log_format cis_json escape=json '{\"timestamp\":\"$time_iso8601\"\
+        ,\"remote_addr\":\"$remote_addr\",\"remote_user\":\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\"\
+        ,\"request\":\"$request\"}';\n access_log /var/log/nginx/access.json cis_json;\n ssl_protocols TLSv1.3;\n server {\
+        \ listen 80 default_server; server_name _; return 444; }\n server { listen 443 ssl default_server; server_name _;\
+        \ ssl_reject_handshake on; }\n server { listen 80; server_name cis.local; return 301 https://cis.local$request_uri;\
+        \ }\n server {\n  listen 443 ssl;\n  server_name cis.local;\n  ssl_certificate /etc/nginx/ssl/cis-lab.crt;\n  ssl_certificate_key\
+        \ /etc/nginx/ssl/cis-lab.key;\n  error_page 404 /404.html;\n  location ~ /\\.(?!well-known(?:/|$)) { deny all; }\n\
+        \  location / { try_files $uri $uri/ =404; }\n }\n}\n"
+      rc: 0
+      stderr: ''
+- name: commented header ignored
+  expected:
+    5.3.3: FAIL
+  overrides:
+    cis_nginx_t:
+      stdout: "# configuration file /etc/nginx/nginx.conf:\nuser nginx;\npid /run/nginx.pid;\nerror_log /var/log/nginx/error.log\
+        \ info;\nevents { worker_connections 1024; }\nhttp {\n server_tokens off;\n keepalive_timeout 10s;\n send_timeout\
+        \ 10s;\n client_header_timeout 10s;\n client_body_timeout 10s;\n client_max_body_size 2M;\n large_client_header_buffers\
+        \ 4 8k;\n add_header X-Content-Type-Options \"nosniff\" always;\n # add_header Referrer-Policy \"strict-origin-when-cross-origin\"\
+        \ always;\n log_format cis_json escape=json '{\"timestamp\":\"$time_iso8601\",\"remote_addr\":\"$remote_addr\",\"\
+        remote_user\":\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\",\"request\":\"$request\"}';\n\
+        \ access_log /var/log/nginx/access.json cis_json;\n ssl_protocols TLSv1.3;\n server { listen 80 default_server; server_name\
+        \ _; return 444; }\n server { listen 443 ssl default_server; server_name _; ssl_reject_handshake on; }\n server {\
+        \ listen 80; server_name cis.local; return 301 https://cis.local$request_uri; }\n server {\n  listen 443 ssl;\n  server_name\
+        \ cis.local;\n  ssl_certificate /etc/nginx/ssl/cis-lab.crt;\n  ssl_certificate_key /etc/nginx/ssl/cis-lab.key;\n \
+        \ error_page 404 /404.html;\n  location ~ /\\.(?!well-known(?:/|$)) { deny all; }\n  location / { try_files $uri $uri/\
+        \ =404; }\n }\n}\n"
+      rc: 0
+      stderr: ''
+- name: untrusted repository authority
+  expected:
+    1.2.1: FAIL
+  overrides:
+    cis_apt:
+      stdout: 'Installed: 1.28.0
+
+        Candidate: 1.28.0
+
+        500 https://nginx.org/packages/ubuntu noble/nginx amd64 Packages
+
+        500 https://nginx.org.evil.invalid/nginx/ x Packages'
+      rc: 0
+      stderr: ''
+- name: permission collection failed
+  expected:
+    2.3.1: ERROR
+  overrides:
+    cis_owners:
+      stdout: ''
+      rc: 1
+      stderr: denied
+- name: unexpected module
+  expected:
+    2.1.1: FAIL
+  overrides:
+    cis_nginx_t:
+      stdout: "# configuration file /etc/nginx/nginx.conf:\nuser nginx; load_module modules/extra.so;\npid /run/nginx.pid;\n\
+        error_log /var/log/nginx/error.log info;\nevents { worker_connections 1024; }\nhttp {\n server_tokens off;\n keepalive_timeout\
+        \ 10s;\n send_timeout 10s;\n client_header_timeout 10s;\n client_body_timeout 10s;\n client_max_body_size 2M;\n large_client_header_buffers\
+        \ 4 8k;\n add_header X-Content-Type-Options \"nosniff\" always;\n add_header Referrer-Policy \"strict-origin-when-cross-origin\"\
+        \ always;\n log_format cis_json escape=json '{\"timestamp\":\"$time_iso8601\",\"remote_addr\":\"$remote_addr\",\"\
+        remote_user\":\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\",\"request\":\"$request\"}';\n\
+        \ access_log /var/log/nginx/access.json cis_json;\n ssl_protocols TLSv1.3;\n server { listen 80 default_server; server_name\
+        \ _; return 444; }\n server { listen 443 ssl default_server; server_name _; ssl_reject_handshake on; }\n server {\
+        \ listen 80; server_name cis.local; return 301 https://cis.local$request_uri; }\n server {\n  listen 443 ssl;\n  server_name\
+        \ cis.local;\n  ssl_certificate /etc/nginx/ssl/cis-lab.crt;\n  ssl_certificate_key /etc/nginx/ssl/cis-lab.key;\n \
+        \ error_page 404 /404.html;\n  location ~ /\\.(?!well-known(?:/|$)) { deny all; }\n  location / { try_files $uri $uri/\
+        \ =404; }\n }\n}\n"
+      rc: 0
+      stderr: ''
+- name: include context and quoted semicolon/hash
+  expected:
+    5.2.2: PASS
+    '3.1': PASS
+    5.3.3: PASS
+  overrides:
+    cis_nginx_t:
+      stdout: "# configuration file /etc/nginx/nginx.conf:\nuser nginx;\npid /run/nginx.pid;\nerror_log /var/log/nginx/error.log\
+        \ info;\nevents { worker_connections 1024; }\nhttp {\n server_tokens off;\n keepalive_timeout 10s;\n send_timeout\
+        \ 10s;\n client_header_timeout 10s;\n client_body_timeout 10s;\n include /etc/nginx/conf.d/*.conf;\n large_client_header_buffers\
+        \ 4 8k;\n add_header X-Content-Type-Options \"nosniff\" always;\n add_header Referrer-Policy \"strict-origin-when-cross-origin\"\
+        \ always;\n log_format cis_json escape=json '{\"timestamp\":\"$time_iso8601\",\"remote_addr\":\"$remote_addr\",\"\
+        remote_user\":\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\",\"request\":\"$request;#fragment\"\
+        }';\n access_log /var/log/nginx/access.json cis_json;\n ssl_protocols TLSv1.3;\n server { listen 80 default_server;\
+        \ server_name _; return 444; }\n server { listen 443 ssl default_server; server_name _; ssl_reject_handshake on; }\n\
+        \ server { listen 80; server_name cis.local; return 301 https://cis.local$request_uri; }\n server {\n  listen 443\
+        \ ssl;\n  server_name cis.local;\n  ssl_certificate /etc/nginx/ssl/cis-lab.crt;\n  ssl_certificate_key /etc/nginx/ssl/cis-lab.key;\n\
+        \  error_page 404 /404.html;\n  location ~ /\\.(?!well-known(?:/|$)) { deny all; }\n  location / { try_files $uri\
+        \ $uri/ =404; }\n }\n}\n\n# configuration file /etc/nginx/conf.d/policy.conf:\nclient_max_body_size 2M;\n"
+      rc: 0
+      stderr: ''
+- name: TLS1.2 negotiation still works
+  expected:
+    4.1.4: FAIL
+    4.1.5: FAIL
+    4.1.6: FAIL
+  overrides:
+    cis_tls12:
+      stdout: Protocol TLSv1.2
+      rc: 0
+      stderr: ''
+- name: restrict audit section
+  expected:
+    5.2.1: PASS
+    5.2.2: PASS
+    5.2.3: PASS
+    5.3.1: PASS
+    5.3.3: PASS
+  overrides:
+    cis_audit_sections:
+    - 5

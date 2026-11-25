@@ -1,132 +1,135 @@
-# NGINX CIS Benchmark 3.0.0 + Ansible
+# CIS NGINX v3.0.0 — Ansible only
 
-Bộ lab của nhóm 12: **Manual 5 tiêu chí**, **Local Automated 30 tiêu chí**.
-Remote để trống có chủ đích, kèm [hướng dẫn điền bốn EC2](docs/REMOTE.md).
-Dùng **VS Code Remote SSH → VM Ubuntu VMware** để sửa code và chạy lệnh.
+Kiểm tra → áp dụng cấu hình mong muốn → kiểm tra lại, bằng playbook/role/module/Jinja Ansible.
+Không còn `cisctl`, Python collector/engine/runner hay callback Python tự viết. Ansible vẫn cần
+Python để hoạt động; `.venv` chỉ cô lập cài đặt Ansible, không phải một phương pháp audit riêng.
 
-## Phạm vi sử dụng
+Phạm vi: 30 tiêu chí được liệt kê ở `roles/cis_audit/vars/main.yml`; không tuyên bố bao phủ toàn bộ
+CIS Benchmark. Manual có 5 tiêu chí Section 5; ví dụ Manual riêng 5.3.3. Máy lab riêng, role thay
+thế toàn bộ nginx.conf và website lab. Ubuntu Server 26.04 VMware / 24.04 EC2 (role hỗ trợ cả hai).
 
-Role dành cho **VM Ubuntu Server 26.04 trên VMware riêng để làm lab**, có systemd, Python 3, sudo và Internet.
-Role quản lý toàn bộ `/etc/nginx/nginx.conf`, thay website bằng website lab, đổi worker account và nguồn gói. Chụp baseline trước khi chạy; không trỏ vào server ứng dụng đang dùng.
-EC2 dự kiến dùng Ubuntu Server 24.04 LTS; Remote vẫn chưa triển khai. Bản Local cũng cho phép Ubuntu 24.04 để kiểm thử tương thích. Ansible Core 2.21 hỗ trợ Python 3.14 trên VM 26.04 và Python 3.12 trên Ubuntu 24.04.
-Self-signed TLS phục vụ lab; CIS 4.1.2 không thuộc 30 tiêu chí đã chọn.
-Repo không chứa Terraform hoặc chức năng tạo EC2.
-
-## Bắt đầu trên terminal của VM
+## Cài công cụ trên VM controller
 
 ```bash
-git clone https://github.com/ThanhLen-IT/cis-nginx-benchmark-automation.git
-cd cis-nginx-benchmark-automation
-# Nếu dùng PR chưa merge, checkout đúng nhánh trong PR trước.
 sudo apt update
-sudo apt install -y python3-venv python3-pip sudo curl openssl iproute2 git
+sudo apt install -y git python3-venv python3-pip openssh-client curl openssl
 python3 -m venv .venv
-. .venv/bin/activate
+source .venv/bin/activate
 pip install -r requirements.txt
 ansible-playbook -i inventory/hosts.yml site.yml --syntax-check
-./cisctl run --ask-become-pass --idempotence
 ```
 
-Mỗi lần chạy có ID mới. Đường dẫn bằng chứng được in ra trên terminal. Kết quả được đo trên VM; repo không kèm số liệu PASS cho máy của bạn.
-Lần chạy đầy đủ có Section 1 nên có thể cài/nâng cấp NGINX từ nguồn nginx.org; các section 2–5 chạy riêng cần NGINX sẵn có.
+Máy đích cần Python 3, sudo, NGINX và các lệnh `curl`, `openssl`, `timeout`, `ss`, `find`, `getent`,
+`id`, `passwd`, `apt-cache`. Chuẩn bị baseline và snapshot trước hardening. Để audit được trước
+khi Section 1 cài công cụ, cài các phụ thuộc hệ thống trước: `sudo apt install -y nginx curl openssl iproute2 sudo`.
+Trước audit, chạy `sudo systemctl enable --now nginx`, `sudo nginx -t` và thử `curl --noproxy '*' -sSI http://127.0.0.1/`. Nếu baseline không có dịch vụ HTTP truy cập được, audit ghi ERROR và chặn remediation cho tới khi sửa nguyên nhân chuẩn bị.
+Manual không cần `.venv`.
 
-## Lệnh sử dụng
+## Ví dụ Local — đọc audit trước rồi quyết định khắc phục
 
-| Mục đích | Lệnh |
-|---|---|
-| Audit độc lập 30 tiêu chí | `./cisctl audit --ask-become-pass` |
-| Khắc phục toàn bộ | `./cisctl remediate --ask-become-pass` |
-| Audit → khắc phục → audit | `./cisctl run --ask-become-pass` |
-| Kiểm tra thêm tính lũy đẳng | `./cisctl run --ask-become-pass --idempotence` |
-| Chạy một section | `./cisctl run --section 5 --ask-become-pass` |
-| Đổi tên website lab | Thêm `--vars-file config/lab.example.yml` |
-| Remote | Chưa triển khai; `--mode remote` báo lỗi 2, không chạy Local thay thế |
-
-Chọn section bằng `--section` của cisctl, **không dùng `--tags` trực tiếp** với bản role này. Các task dùng chung phải chạy để kiểm tra phụ thuộc và biên dịch website đầy đủ.
-Profile lưu ở `/var/lib/nginx-cis/profile.json`; chạy section sau giữ các section đã bật trước. Vì có cấu hình chung, không diễn giải lựa chọn section như cam kết chỉ chạm một directive.
-Run theo section chỉ đánh giá số tiêu chí trong section đó; lượt nghiệm thu dùng `--section all`.
-
-### Tách ba lệnh, cùng một lần thực nghiệm
+Trong terminal VM của VS Code, tại thư mục repo, đã kích hoạt `.venv`:
 
 ```bash
-./cisctl audit --stage before --section all --run-id demo01 --ask-become-pass
-# audit trả 1 nếu có FAIL/REVIEW; kiểm tra báo cáo trước khi chạy bước tiếp.
-./cisctl remediate --section all --run-id demo01 --ask-become-pass
-./cisctl audit --stage after --section all --run-id demo01 --ask-become-pass
+CIS_RUN_ID=local-ansible-01
+ansible-playbook -i inventory/hosts.yml site.yml -K \
+  -e cis_action=audit -e cis_audit_stage=before -e cis_section=5 -e cis_run_id="$CIS_RUN_ID"
+cat "evidence/$CIS_RUN_ID/nginx-cis-server/before/audit-summary.csv"
 ```
 
-Không nối audit bằng `&&` khi muốn khắc phục baseline FAIL. Lệnh `run` đã xử lý việc này.
-Một run ID giữ nguyên section và vars file. Stage đã tồn tại bị từ chối ghi đè; dùng run ID khác khi quay lại.
+Audit có FAIL/REVIEW vẫn xuất đầy đủ kết quả rồi lệnh kết thúc nonzero; điều này không tự thực
+hiện remediation. Đọc CSV và raw trước. `nginx-cis-server` ở đường dẫn là **alias inventory**,
+không phải tên user hay kết quả `hostname`. Nếu đổi alias thì đổi đường dẫn tương ứng.
 
-## Mã trả về và trạng thái
+Khi bạn quyết định áp dụng chính sách Section 5:
 
-- `0`: audit trong phạm vi đều PASS / tác vụ hoàn tất.
-- `1`: còn FAIL, REVIEW hoặc lần chạy lại chưa lũy đẳng.
-- `2`: lỗi thu thập, quyền, thực thi, dữ liệu hoặc chế độ chưa hỗ trợ.
-- PASS/FAIL đánh giá tiêu chí; ERROR là phép kiểm tra không thực hiện được; REVIEW cần ngữ cảnh.
-- `failed=0` của Ansible không phải kết luận 30/30 PASS.
-- Baseline ERROR dừng trước thay đổi. Remediation lỗi vẫn có post-audit chẩn đoán và mã lỗi thực thi.
+```bash
+ansible-playbook -i inventory/hosts.yml site.yml -K \
+  -e cis_action=remediate -e cis_section=5 -e cis_run_id="$CIS_RUN_ID"
+ansible-playbook -i inventory/hosts.yml site.yml -K \
+  -e cis_action=audit -e cis_audit_stage=after -e cis_section=5 -e cis_run_id="$CIS_RUN_ID"
+cat "evidence/$CIS_RUN_ID/nginx-cis-server/after/audit-summary.csv"
+cat "evidence/$CIS_RUN_ID/comparison.csv"
+```
 
-## Bằng chứng
+Dùng cùng run ID, alias, host set, section, biến cấu hình và code cho ba lệnh. Cả Local/Remote
+`remediate` đều yêu cầu before live hợp lệ, không ERROR. Đây là kiểm tra kỹ thuật, không có
+bản ghi phê duyệt điện tử; việc bạn chủ động chạy `remediate` thể hiện quyết định sửa.
+
+## Chạy trọn chu trình và kiểm tra lũy đẳng
+
+Đây là cách thay thế ví dụ tách lệnh, không chạy thêm trên cùng run ID. Khôi phục baseline,
+sao lưu evidence ra ngoài VM trước nếu quay demo lại; dùng run ID mới.
+
+```bash
+set -o pipefail
+mkdir -p evidence
+ansible-playbook -i inventory/hosts.yml site.yml -K \
+  -e cis_action=run -e cis_section=5 -e cis_run_id=local-full-01 \
+  -e cis_idempotence=true 2>&1 | tee evidence/local-full-01.log
+CIS_RC=${PIPESTATUS[0]}
+printf 'ansible exit=%s\n' "$CIS_RC"
+```
+
+`run` không hỏi đồng ý sau audit: đã chọn run là chọn tự audit → remediation → re-audit.
+Before ERROR chặn thay đổi host đó; FAIL/REVIEW không chặn. `-K` xác thực sudo, không phải phê duyệt.
+Không dùng `--check` để thay audit: audit thật đã chỉ đọc NGINX, còn `--check` có thể bỏ qua lệnh đọc.
+Mặc định action là **audit**, không mặc định sửa cấu hình. `cis_section=all` chọn đủ 30 tiêu chí.
+
+## Kết quả cuối cùng
 
 ```text
-evidence/<run-id>/<hostname>/
-  manifest.json                 # commit, host, scope, thời điểm, hash vars
-  before/                       # audit.json, audit-summary.csv, audit-report.txt, raw/
-  remediate.log
-  after/
-  idempotence.log               # khi chọn --idempotence
-  after-idempotence/
-  ansible-recap.json
-  summary.json                  # so sánh trước/sau và mã trả về từng giai đoạn
+evidence/<run-id>/
+  <inventory-alias>/
+    manifest.json
+    before/{audit.json,audit-summary.csv,audit-report.txt,raw/collected.json}
+    remediation/result.json
+    after/{audit.json,audit-summary.csv,audit-report.txt,raw/collected.json}
+    idempotence.json                  # khi yêu cầu và lần hai thực thi được
+    after-idempotence/                # audit sau lần áp dụng thứ hai
+    summary.json
+  summary.json                       # tổng hợp mọi host được chọn, kể cả host lỗi
+  hosts.csv
+  comparison.csv
 ```
 
-Snapshot chứa cấu hình máy; kiểm tra trước khi chia sẻ. Không có TLS private key trong evidence.
-Backup cấu hình nằm ở `/var/backups/nginx-cis/<run-id>/etc-nginx.tar.gz`. Backup này không khôi phục gói, tài khoản, dịch vụ hoặc toàn bộ VM; xem [demo và baseline](docs/DEMO.md).
-`examples/legacy-evidence/` là kết quả cũ từ main d296bef, không phải bằng chứng chạy code mới.
+`audit-summary.csv`: `CIS_ID,Group,Control,Status,Detail`. JSON còn có đường dẫn evidence cho
+mỗi tiêu chí. Status: PASS đạt, FAIL chưa đạt, ERROR không đánh giá được vì lỗi thực thi,
+REVIEW cần xem xét. SSH unreachable được ghi lỗi thực thi cấp host; không tạo giả 30 dòng FAIL.
 
-## 30 tiêu chí đã chọn
+**Mã thoát Ansible không còn quy ước 0/1/2 của cisctl cũ.** 0 là lần gọi hoàn thành theo yêu cầu;
+nonzero cần đọc `summary.json` để phân biệt FAIL/REVIEW/ERROR. Với action remediate, thành công
+được ghi `REMEDIATED_NOT_REAUDITED`, chưa kết luận tuân thủ. `PLAY RECAP failed=0` không thay
+cho Status CIS. Tệp raw có cấu hình hệ thống; giữ trong hồ sơ riêng, không commit evidence/khóa.
 
-| Nhóm | CIS ID | Số lượng |
-|---|---|---:|
-| Installation | 1.1.1, 1.2.1, 1.2.2 | 3 |
-| Basic Configuration | 2.1.1, 2.2.1–2.2.3, 2.3.1–2.3.3, 2.4.1–2.4.4, 2.5.1–2.5.3 | 14 |
-| Logging | 3.1–3.3 | 3 |
-| TLS | 4.1.1, 4.1.3–4.1.6 | 5 |
-| Request Controls / Headers | 5.2.1–5.2.3, 5.3.1, 5.3.3 | 5 |
+## Những hành vi cần hiểu đúng
 
-Xem [luồng xử lý](docs/ARCHITECTURE.md), [mô hình và bảng thành phần](docs/MODEL.md), [Manual](docs/MANUAL.md), [demo](docs/DEMO.md) và [Remote](docs/REMOTE.md).
-Điều kiện được đối chiếu bản PDF CIS NGINX v3.0.0 của nhóm; nhãn Manual trong benchmark không phải tên hình thức chạy của repo.
+- Khắc phục theo section, không chỉ các dòng FAIL. `nginx_cis_enabled` tích lũy section cũ + mới;
+  section đã bật có thể chạy lại. Audit chỉ đánh giá phạm vi được chọn trong lần gọi.
+- Defaults đặt chính sách mong muốn, task kiểm tra đầu vào, template sinh cấu hình;
+  module copy so sánh tệp/thông tin owner-mode, handler chỉ reload khi được notify.
+- Bộ audit mới dùng command/stat + register + set_fact/Jinja để phân tích, rồi template JSON/CSV.
+  Có lexer cấu hình giữ chuỗi trích dẫn, comment, block và include; khi không phân tích trọn vẹn
+  trả REVIEW thay vì khẳng định PASS. HTTP/TLS probe kiểm tra website được chọn bằng `cis_probe_host`
+  (workflow dùng `nginx_cis_primary_name`); không chứng nhận mọi website/đường dẫn trên máy.
+- Một số tiêu chí là chính sách lab: bản NGINX tối thiểu 1.28.0, TLS1.3-only, timeout 10s, body2M,
+  buffers4x8k. Không đồng nhất mọi giá trị này với yêu cầu bắt buộc duy nhất của CIS.
+- Lũy đẳng dựa trên **các thay đổi thực của role khắc phục lần hai**: mutation tasks gửi notify
+  tới handler đánh dấu thay đổi; không tính việc ghi evidence. Cần `idempotent=true` và audit
+  sau lần hai đạt. Lỗi lần hai không được ghi thành stable chỉ vì không thấy changed.
+- Audit không `apt update`, không sửa cấu hình NGINX và không reload. Kiểm tra candidate dựa trên
+  APT metadata đang có; ghi nhận thời điểm và cập nhật metadata trong chuẩn bị nếu cần.
+- Manifest khóa identity/code/policy/scope/host set. Audit stages và remediation không được ghi đè.
+  Lock ở `evidence/.ansible-workflow.lock` chặn hai lượt đồng thời trên cùng controller/evidence root.
+  Nếu bị ngắt cưỡng bức, xác minh không còn playbook chạy rồi mới xóa thư mục lock rỗng.
+  Các controller độc lập phải tự phối hợp để không đồng thời sửa cùng một máy đích.
 
-## Phân công bốn thành viên
+## Quyền và Remote
 
-| Vai trò | Mã nguồn chính | Đầu ra báo cáo |
-|---|---|---|
-| TV1 | Section 1–2 | 17 tiêu chí; phiên bản, tài khoản, quyền và cấu hình cơ bản |
-| TV2 | Section 3–4 | 8 tiêu chí; log, TLS và phép kiểm chứng |
-| TV3 | Section 5, audit engine | 5 tiêu chí, cơ chế đánh giá 30 tiêu chí và bảng Manual |
-| TV4 | runner, profile, template chung, inventory, callback | Tích hợp, evidence, mô hình và Remote về sau |
+Local: Ansible nâng quyền root trên VM cho thu thập và khắc phục. Remote: controller chạy bằng
+user thường, EC2 nâng quyền root; việc cài công cụ trên controller có thể cần sudo. Không tự
+cấp sudo và không yêu cầu blanket `NOPASSWD: ALL`; kiểm tra `sudo -l` trên từng máy.
+Nếu EC2 sudo không cần mật khẩu, bỏ `-K`; nếu cần, `-K` hỏi mật khẩu tài khoản EC2. Không lưu
+mật khẩu trong inventory hoặc lệnh. Xem [hướng dẫn Remote](docs/REMOTE.md).
 
-Mỗi section có chủ trì; sửa template/profile dùng chung cần kiểm tra chéo với các chủ section. Bốn EC2 tương lai đều nhận đủ 30 tiêu chí.
-
-## Kiểm thử
-
-```bash
-pip install -r requirements-dev.txt
-pytest -q
-python -m compileall -q audit scripts callback_plugins
-bash -n audit/baseline-audit.sh audit/post-hardening-audit.sh
-ansible-playbook site.yml --syntax-check
-```
-
-GitHub Actions có regression tests và ma trận Ubuntu 24.04/26.04 chạy full workflow cùng idempotence, upload evidence kể cả khi thất bại.
-Trạng thái workflow/artefact thực tế mới xác nhận lượt CI thành công; file workflow không phải bằng chứng đã chạy.
-Tests dùng fixture HTTP/config không được dùng làm kết quả tuân thủ của VM/EC2.
-
-## Nguồn tham khảo
-
-- Tài liệu CIS NGINX Benchmark v3.0.0 do nhóm cung cấp; không phân phối PDF trong repo.
-- https://nginx.org/en/linux_packages.html
-- https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_handlers.html
-- https://code.visualstudio.com/docs/remote/ssh
-- Repo Kundanlyl/nginx-cis-hardening-ansible: tham khảo tổ chức và website; không sao chép nguyên repository.
+Tổ chức mã, luồng thực thi và bảng tiêu chí: [ARCHITECTURE](docs/ARCHITECTURE.md).
+Manual: [MANUAL](docs/MANUAL.md). Phân công/quay demo: [DEMO](docs/DEMO.md).

@@ -1,0 +1,23 @@
+---
+- name: Reset the actual change notification marker
+  ansible.builtin.set_fact:
+    cis_remediation_changed: false
+- name: Apply the same desired configuration a second time
+  ansible.builtin.include_role:
+    name: nginx_cis
+- name: Flush all handlers including change marker
+  ansible.builtin.meta: flush_handlers
+- name: Record second application outcome
+  ansible.builtin.set_fact:
+    cis_idempotent: '{{ not cis_remediation_changed }}'
+- name: Save actual idempotence result
+  ansible.builtin.copy:
+    dest: '{{ cis_host_evidence }}/idempotence.json'
+    content: '{{ {"idempotent": cis_idempotent, "changed": cis_remediation_changed, "execution_error": false} | to_nice_json }}
+'
+    mode: '0640'
+  delegate_to: localhost
+  become: false
+- name: Verify compliance again after second application
+  ansible.builtin.include_tasks: audit-stage.yml
+  vars: {cis_stage: after-idempotence}

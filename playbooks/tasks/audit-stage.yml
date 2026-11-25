@@ -1,0 +1,16 @@
+---
+- name: Check immutable stage destination on controller
+  ansible.builtin.stat:
+    path: '{{ cis_host_evidence }}/{{ cis_stage }}'
+  register: cis_stage_stat
+  delegate_to: localhost
+  become: false
+- name: Refuse overwriting any existing audit stage
+  ansible.builtin.assert:
+    that: not cis_stage_stat.stat.exists
+    fail_msg: Stage evidence already exists; preserve it and choose a new run ID.
+- name: Evaluate live CIS conditions with native Ansible tasks
+  ansible.builtin.include_role:
+    name: cis_audit
+  vars:
+    cis_probe_host: '{{ nginx_cis_primary_name }}'

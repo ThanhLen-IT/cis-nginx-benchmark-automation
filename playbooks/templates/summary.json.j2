@@ -1,0 +1,7 @@
+{% set ns = namespace(hosts={}, failed=[]) %}
+{% for h in ansible_play_hosts_all %}
+{% set result = hostvars[h].cis_host_summary | default({'host':h,'outcome':'ERROR','execution_error':'No host summary; inspect Ansible log'}) %}
+{% set ns.hosts = ns.hosts | combine({h: result}) %}
+{% if result.outcome not in ['PASS','REMEDIATED_NOT_REAUDITED'] %}{% set ns.failed = ns.failed + [h] %}{% endif %}
+{% endfor %}
+{{ {'implementation':'ansible-native','run_id':cis_run_id,'hosts':ns.hosts,'incomplete_hosts':ns.failed,'expected_hosts':ansible_play_hosts_all | length} | to_nice_json }}

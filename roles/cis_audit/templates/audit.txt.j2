@@ -1,0 +1,6 @@
+CIS NGINX 3.0.0 | {{ inventory_hostname }} | {{ cis_run_id }} | {{ cis_stage }}
+Source={{ cis_audit_report.source }}; Sections={{ cis_audit_sections }}; Probe={{ cis_target_host }}
+{% for r in cis_results %}
+[{{ r.status }}] {{ r.cis_id }} {{ r.control }}: {{ r.detail }}
+{% endfor %}
+SUMMARY {{ cis_audit_report.counts | to_json }}

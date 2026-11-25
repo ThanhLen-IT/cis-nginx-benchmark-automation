@@ -1,0 +1,50 @@
+{% set ns = namespace(ports=[], badports=[], reject=false, hidden=false, bodyhttp=false, logdetail=false, weak=[], timeouts={}, body=[], buffers=[], keysbad=[]) %}
+{% for d in cis_dirs %}
+{% if d.name == 'listen' and d.args %}
+{% set a = d.args[0] %}
+{% if not a.startswith('unix:') %}
+{% set p = (a | regex_findall('(?:^|:)([0-9]+)$') | first | default('80')) | int %}
+{% set ns.ports = ns.ports + [p] %}
+{% endif %}
+{% endif %}
+{% if d.name in ['client_header_timeout','client_body_timeout','send_timeout','keepalive_timeout'] %}
+{% set t = d.args[0] | default('') %}
+{% set number = t | regex_findall('^([0-9]+(?:[.][0-9]+)?)(?:ms|s|m|h|d)?$') | first | default('-1') | float %}
+{% set factor = 0.001 if t.endswith('ms') else (60 if t.endswith('m') else (3600 if t.endswith('h') else (86400 if t.endswith('d') else 1))) %}
+{% set ns.timeouts = ns.timeouts | combine({d.name: ns.timeouts.get(d.name, []) + [number * factor]}) %}
+{% endif %}
+{% if d.name == 'client_max_body_size' %}
+{% set ns.body = ns.body + [d.args[0] | default('')] %}
+{% if d.context and d.context[-1].name == 'http' and d.args[0] | default('') is match('(?i)^[1-9][0-9]*[kmg]?$') %}{% set ns.bodyhttp = true %}{% endif %}
+{% endif %}
+{% if d.name == 'large_client_header_buffers' %}{% set ns.buffers = ns.buffers + [d.args] %}{% endif %}
+{% if d.name in ['ssl_ciphers','proxy_ssl_ciphers'] and d.args | join(' ') is search('(?i)NULL|EXPORT|RC4|DES|MD5|aNULL|eNULL|SHA1') %}{% set ns.weak = ns.weak + [d.args] %}{% endif %}
+{% if d.name == 'access_log' and d.args | length > 1 %}
+{% for fmt in cis_dirs | selectattr('name','equalto','log_format') %}
+{% if fmt.args[0] == d.args[1] %}
+{% set text = fmt.args | join(' ') %}
+{% if '$time_iso8601' in text and '$remote_addr' in text and '$remote_user' in text and '$status' in text and '$http_user_agent' in text and ('$request' in text or '$request_uri' in text) %}{% set ns.logdetail = true %}{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% for b in cis_parsed.blocks %}
+{% if b.block.name == 'server' %}
+{% set s = namespace(default=false, reject=false) %}
+{% for d in cis_dirs if d.context == b.context %}
+{% if d.name == 'listen' and 'default_server' in d.args %}{% set s.default = true %}{% endif %}
+{% if d.name == 'return' and d.args[0] | default('') in ['444','400','403','404'] %}{% set s.reject = true %}{% endif %}
+{% endfor %}
+{% if s.default and s.reject %}{% set ns.reject = true %}{% endif %}
+{% endif %}
+{% if b.block.name == 'location' and b.block.args | join(' ') is search('/\\\\[.]') %}
+{% for d in cis_dirs if d.context == b.context %}
+{% if (d.name == 'deny' and d.args == ['all']) or (d.name == 'return' and d.args[0] | default('') in ['403','404']) %}{% set ns.hidden = true %}{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% for line in cis_sockets.stdout.splitlines() if 'nginx' in line %}
+{% set parts = line.split() %}
+{% if parts | length > 3 %}{% set ns.ports = ns.ports + [(parts[3] | regex_findall(':([0-9]+)$') | first | default('-1')) | int] %}{% endif %}
+{% endfor %}
+{{ {'ports': ns.ports | unique | list, 'default_reject':ns.reject, 'hidden_deny':ns.hidden, 'timeouts':ns.timeouts, 'body':ns.body, 'body_http':ns.bodyhttp, 'buffers':ns.buffers, 'detailed_log':ns.logdetail, 'weak_ciphers':ns.weak} | to_json }}

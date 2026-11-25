@@ -1,0 +1,253 @@
+cis_catalog:
+- cis_id: 1.1.1
+  section: 1
+  control: NGINX installed and minimum version
+  passed: '{{ cis_version | length > 0 and cis_version is version(cis_minimum_version, ''>='') }}'
+  detail: version={{ cis_version }}, minimum={{ cis_minimum_version }}
+  error: '{{ cis_nginx_v.rc not in [0, 2] and cis_version | length > 0 }}'
+  review: '{{ false }}'
+- cis_id: 1.2.1
+  section: 1
+  control: Trusted package repositories
+  passed: '{{ cis_repo_urls | length > 0 and cis_untrusted_urls | length == 0 }}'
+  detail: repository URLs={{ cis_repo_urls }}; unexpected={{ cis_untrusted_urls }}
+  error: '{{ cis_apt.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: 1.2.2
+  section: 1
+  control: Installed NGINX matches APT candidate
+  passed: '{{ cis_installed not in ['''', ''(none)''] and cis_installed == cis_candidate }}'
+  detail: Installed={{ cis_installed }}; Candidate={{ cis_candidate }}; APT metadata is not refreshed by audit
+  error: '{{ cis_apt.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: 2.1.1
+  section: 2
+  control: Only approved dynamic modules loaded
+  passed: '{{ cis_unapproved_modules | length == 0 }}'
+  detail: unapproved modules={{ cis_unapproved_modules }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 2.2.1
+  section: 2
+  control: Non privileged worker account
+  passed: '{{ cis_service_user | length > 0 and cis_account.uid.rc == 0 and cis_account.uid.stdout | trim != ''0''
+    and cis_account.groups.stdout.split() | intersect([''root'',''wheel'',''sudo'',''admin'',''adm'']) | length
+    == 0 and ''not allowed to run sudo'' in (cis_account.sudo.stdout ~ cis_account.sudo.stderr) | lower }}'
+  detail: user={{ cis_service_user }}; UID={{ cis_account.uid.stdout }}; groups={{ cis_account.groups.stdout }};
+    sudo={{ cis_account.sudo.stdout ~ cis_account.sudo.stderr }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 2.2.2
+  section: 2
+  control: Worker account password locked
+  passed: '{{ cis_service_user | length > 0 and cis_account.password.rc == 0 and (cis_account.password.stdout.split()[1]
+    | default(''?'')) in [''L'',''LK''] }}'
+  detail: passwd -S={{ cis_account.password.stdout }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 2.2.3
+  section: 2
+  control: Worker account non login shell
+  passed: '{{ cis_service_user | length > 0 and cis_account.passwd.rc == 0 and cis_account.passwd.stdout | trim
+    | split('':'') | last in [''/usr/sbin/nologin'',''/sbin/nologin'',''/bin/nologin'',''/bin/false''] }}'
+  detail: getent={{ cis_account.passwd.stdout }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 2.3.1
+  section: 2
+  control: NGINX configuration root ownership
+  passed: '{{ cis_owners.rc == 0 and cis_owners.stdout | trim | length == 0 }}'
+  detail: find ownership violations={{ cis_owners.stdout }}
+  error: '{{ cis_owners.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: 2.3.2
+  section: 2
+  control: Configuration permission masks directories 750 files 640
+  passed: '{{ cis_modes.rc == 0 and cis_modes.stdout | trim | length == 0 }}'
+  detail: find mode violations={{ cis_modes.stdout }}
+  error: '{{ cis_modes.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: 2.3.3
+  section: 2
+  control: PID file ownership and permissions
+  passed: '{{ cis_pid.stat.exists and cis_pid.stat.uid | default(-1) == 0 and cis_pid.stat.gid | default(-1) ==
+    0 and cis_pid.stat.mode | default('''') in [''0644'',''0640'',''0600'',''0444'',''0440'',''0400'',''0000'']
+    }}'
+  detail: PID={{ cis_pid_path }}; stat={{ cis_pid.stat }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 2.4.1
+  section: 2
+  control: Only authorized NGINX listening ports
+  passed: '{{ cis_derived.ports | length > 0 and cis_derived.ports | difference(cis_allowed_ports) | length == 0
+    }}'
+  detail: configured and live ports={{ cis_derived.ports }}; allowed={{ cis_allowed_ports }}
+  error: '{{ cis_sockets.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: 2.4.2
+  section: 2
+  control: Unknown Host rejected and normal website reachable
+  passed: '{{ cis_derived.default_reject and cis_root_code == ''200'' and (cis_probe_results.invalid_http.rc ==
+    52 or (cis_probe_results.invalid_http.rc == 0 and cis_probe_results.invalid_http.stdout is search(''^HTTP/\S+
+    (400|403|404)''))) and (not cis_uses_tls or cis_probe_results.invalid_tls.rc in [35,52] or (cis_probe_results.invalid_tls.rc
+    == 0 and cis_probe_results.invalid_tls.stdout is search(''^HTTP/\S+ (400|403|404)''))) }}'
+  detail: default reject={{ cis_derived.default_reject }}; valid root={{ cis_root_code }}; invalid HTTP rc={{ cis_probe_results.invalid_http.rc
+    }}; invalid TLS rc={{ cis_probe_results.invalid_tls.rc }}
+  error: '{{ cis_probe_results.root.rc != 0 or cis_probe_results.invalid_http.rc not in [0,52] or (cis_uses_tls
+    and cis_probe_results.invalid_tls.rc not in [0,35,52]) }}'
+  review: '{{ false }}'
+- cis_id: 2.4.3
+  section: 2
+  control: Keepalive timeout positive and at most 10 seconds
+  passed: '{{ (cis_derived.timeouts.get(''keepalive_timeout'', []) | length > 0 and cis_derived.timeouts.get(''keepalive_timeout'',
+    []) | min >= 0.001 and cis_derived.timeouts.get(''keepalive_timeout'', []) | max <= 10) }}'
+  detail: keepalive seconds={{ cis_derived.timeouts.get("keepalive_timeout", []) }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 2.4.4
+  section: 2
+  control: Send timeout positive and at most 10 seconds
+  passed: '{{ (cis_derived.timeouts.get(''send_timeout'', []) | length > 0 and cis_derived.timeouts.get(''send_timeout'',
+    []) | min >= 0.001 and cis_derived.timeouts.get(''send_timeout'', []) | max <= 10) }}'
+  detail: send seconds={{ cis_derived.timeouts.get("send_timeout", []) }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 2.5.1
+  section: 2
+  control: Hide NGINX version
+  passed: '{{ [''off''] in (cis_dirs | selectattr(''name'', ''equalto'', ''server_tokens'') | map(attribute=''args'')
+    | list) and not [''on''] in (cis_dirs | selectattr(''name'', ''equalto'', ''server_tokens'') | map(attribute=''args'')
+    | list) and cis_root_code != ''000'' and not cis_probe_results.root.stdout is search(''(?im)^Server:.*nginx/[0-9]'')
+    }}'
+  detail: server_tokens={{ (cis_dirs | selectattr('name', 'equalto', 'server_tokens') | map(attribute='args') |
+    list) }}; root={{ cis_root_code }}
+  error: '{{ cis_probe_results.root.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: 2.5.2
+  section: 2
+  control: Custom index and error pages hide NGINX
+  passed: '{{ cis_dirs | selectattr(''name'',''equalto'',''error_page'') | list | length > 0 and cis_404_code ==
+    ''404'' and ''nginx'' not in cis_not_found_body | lower and ''welcome to nginx'' not in cis_root_body | lower
+    }}'
+  detail: root={{ cis_root_code }}; 404={{ cis_404_code }}; response bodies checked
+  error: '{{ cis_probe_results.root.rc not in [0] or cis_probe_results.not_found.rc not in [0] }}'
+  review: '{{ false }}'
+- cis_id: 2.5.3
+  section: 2
+  control: Hidden file requests denied
+  passed: '{{ cis_derived.hidden_deny and cis_probe_results.hidden.stdout is search(''^HTTP/\S+ (403|404)'') }}'
+  detail: hidden location deny={{ cis_derived.hidden_deny }}; HTTP probe={{ cis_probe_results.hidden.stdout | regex_findall("^HTTP/[^
+    ]+ [0-9]+") }}
+  error: '{{ cis_probe_results.hidden.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: '3.1'
+  section: 3
+  control: Detailed active access log format
+  passed: '{{ cis_derived.detailed_log }}'
+  detail: active custom detailed log format={{ cis_derived.detailed_log }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: '3.2'
+  section: 3
+  control: Access logging enabled
+  passed: '{{ cis_access_logs | length > 0 and not [''off''] in (cis_dirs | selectattr(''name'', ''equalto'', ''access_log'')
+    | map(attribute=''args'') | list) }}'
+  detail: access_log={{ (cis_dirs | selectattr('name', 'equalto', 'access_log') | map(attribute='args') | list)
+    }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: '3.3'
+  section: 3
+  control: Error log enabled at info
+  passed: '{{ cis_info_logs | length > 0 }}'
+  detail: error_log={{ (cis_dirs | selectattr('name', 'equalto', 'error_log') | map(attribute='args') | list) }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 4.1.1
+  section: 4
+  control: HTTP redirects to HTTPS
+  passed: '{{ cis_http_code in [''301'',''308''] and cis_probe_results.http.stdout is search(''(?im)^Location: https://'')
+    and cis_dirs | selectattr(''name'',''equalto'',''return'') | map(attribute=''args'') | flatten | select(''match'',''https://'')
+    | list | length > 0 }}'
+  detail: 'HTTP code={{ cis_http_code }}; Location={{ cis_probe_results.http.stdout | regex_findall("(?im)^Location:
+    (.+)") }}'
+  error: '{{ cis_probe_results.http.rc != 0 }}'
+  review: '{{ false }}'
+- cis_id: 4.1.3
+  section: 4
+  control: Private key root ownership and restricted permissions
+  passed: '{{ cis_key_paths | length > 0 and cis_bad_keys | default([]) | length == 0 }}'
+  detail: configured key paths={{ cis_key_paths }}; violations={{ cis_bad_keys | default([]) }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 4.1.4
+  section: 4
+  control: TLS 1.3 only configured and negotiated
+  passed: '{{ cis_tls13_only }}'
+  detail: protocols={{ cis_protocol_args }}; TLS1.3 rc={{ cis_tls13.rc }}; TLS1.2 rc={{ cis_tls12.rc }}
+  error: '{{ cis_tls13.rc in [124,127] or cis_tls12.rc in [124,127] }}'
+  review: '{{ false }}'
+- cis_id: 4.1.5
+  section: 4
+  control: Weak ciphers disabled by exclusive TLS 1.3
+  passed: '{{ cis_tls13_only and cis_derived.weak_ciphers | length == 0 }}'
+  detail: TLS1.3 exclusive={{ cis_tls13_only }}; weak cipher directives={{ cis_derived.weak_ciphers }}
+  error: '{{ cis_tls13.rc in [124,127] or cis_tls12.rc in [124,127] }}'
+  review: '{{ false }}'
+- cis_id: 4.1.6
+  section: 4
+  control: TLS 1.3 exchange without legacy DH parameter file
+  passed: '{{ cis_tls13_only and (cis_dirs | selectattr(''name'', ''equalto'', ''ssl_dhparam'') | map(attribute=''args'')
+    | list) | length == 0 }}'
+  detail: TLS1.3 exclusive={{ cis_tls13_only }}; ssl_dhparam={{ (cis_dirs | selectattr('name', 'equalto', 'ssl_dhparam')
+    | map(attribute='args') | list) }}
+  error: '{{ cis_tls13.rc in [124,127] or cis_tls12.rc in [124,127] }}'
+  review: '{{ false }}'
+- cis_id: 5.2.1
+  section: 5
+  control: Client header body and send timeouts 10 to 20 seconds
+  passed: '{{ (cis_derived.timeouts.get(''client_header_timeout'', []) | length > 0 and cis_derived.timeouts.get(''client_header_timeout'',
+    []) | min >= 10 and cis_derived.timeouts.get(''client_header_timeout'', []) | max <= 20) and (cis_derived.timeouts.get(''client_body_timeout'',
+    []) | length > 0 and cis_derived.timeouts.get(''client_body_timeout'', []) | min >= 10 and cis_derived.timeouts.get(''client_body_timeout'',
+    []) | max <= 20) and (cis_derived.timeouts.get(''send_timeout'', []) | length > 0 and cis_derived.timeouts.get(''send_timeout'',
+    []) | min >= 10 and cis_derived.timeouts.get(''send_timeout'', []) | max <= 20) }}'
+  detail: timeouts seconds={{ cis_derived.timeouts }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 5.2.2
+  section: 5
+  control: Explicit positive HTTP request body size
+  passed: '{{ cis_derived.body_http and cis_derived.body | reject(''match'',''(?i)^[1-9][0-9]*[kmg]?$'') | list
+    | length == 0 }}'
+  detail: client_max_body_size={{ cis_derived.body }}; explicit HTTP limit={{ cis_derived.body_http }}
+  error: '{{ false }}'
+  review: '{{ false }}'
+- cis_id: 5.2.3
+  section: 5
+  control: Header buffers default or documented 4 8k
+  passed: '{{ cis_derived.buffers | length == 0 or cis_derived.buffers | reject(''equalto'',[''4'',''8k'']) | list
+    | length == 0 }}'
+  detail: large_client_header_buffers={{ cis_derived.buffers }}; absent uses NGINX default
+  error: '{{ false }}'
+  review: '{{ cis_derived.buffers | length > 0 and cis_derived.buffers | reject(''equalto'',[''4'',''8k'']) | list
+    | length > 0 }}'
+- cis_id: 5.3.1
+  section: 5
+  control: X-Content-Type-Options present with always on HTTP 200 and 404
+  passed: '{{ cis_header_xcto_config and cis_root_code == ''200'' and cis_404_code == ''404'' and cis_header_xcto_root
+    | intersect([''nosniff'']) | length > 0 and cis_header_xcto_404 | intersect([''nosniff'']) | length > 0 }}'
+  detail: config always={{ cis_header_xcto_config }}; HTTP200={{ cis_header_xcto_root }}; HTTP404={{ cis_header_xcto_404
+    }}
+  error: '{{ cis_probe_results.root.rc not in [0] or cis_probe_results.not_found.rc not in [0] }}'
+  review: '{{ false }}'
+- cis_id: 5.3.3
+  section: 5
+  control: Referrer-Policy present with always on HTTP 200 and 404
+  passed: '{{ cis_header_rp_config and cis_root_code == ''200'' and cis_404_code == ''404'' and cis_header_rp_root
+    | intersect([''no-referrer'', ''same-origin'', ''strict-origin'', ''strict-origin-when-cross-origin'']) | length
+    > 0 and cis_header_rp_404 | intersect([''no-referrer'', ''same-origin'', ''strict-origin'', ''strict-origin-when-cross-origin''])
+    | length > 0 }}'
+  detail: config always={{ cis_header_rp_config }}; HTTP200={{ cis_header_rp_root }}; HTTP404={{ cis_header_rp_404
+    }}
+  error: '{{ cis_probe_results.root.rc not in [0] or cis_probe_results.not_found.rc not in [0] }}'
+  review: '{{ false }}'

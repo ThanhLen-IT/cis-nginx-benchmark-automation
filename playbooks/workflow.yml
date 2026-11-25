@@ -1,0 +1,119 @@
+---
+- name: CIS NGINX audit remediation and evidence using Ansible
+  hosts: nginx_servers
+  gather_facts: false
+  become: true
+  ignore_unreachable: true
+  vars_files:
+    - ../config/workflow.yml
+  vars:
+    cis_audit_sections: "{{ [1,2,3,4,5] if cis_section | string == 'all' else [cis_section | int] }}"
+    nginx_cis_sections: '{{ cis_audit_sections }}'
+    nginx_cis_execution_mode: '{{ cis_entry_mode }}'
+    nginx_cis_backup_dir: '/var/backups/nginx-cis/{{ cis_run_id }}'
+    cis_evidence_base: '{{ cis_evidence_root }}/{{ cis_run_id }}'
+    cis_host_evidence: '{{ cis_evidence_base }}/{{ inventory_hostname }}'
+  pre_tasks:
+    - name: Expose remediation defaults without changing the target
+      ansible.builtin.import_role:
+        name: nginx_cis
+        tasks_from: defaults_only
+        public: true
+  tasks:
+    - name: Validate explicit scope identity and transport before connecting
+      ansible.builtin.assert:
+        that:
+          - cis_run_id is match('^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$')
+          - inventory_hostname is match('^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$')
+          - cis_action in ['audit','remediate','run']
+          - cis_audit_stage in ['before','after']
+          - cis_section | string in ['all','1','2','3','4','5']
+          - not ansible_check_mode
+          - (cis_entry_mode == 'local' and ansible_connection | default('ssh') == 'local') or (cis_entry_mode == 'remote' and ansible_connection | default('ssh') == 'ssh')
+          - cis_entry_mode != 'remote' or (ansible_host | default('') | length > 0 and ansible_host not in ['127.0.0.1','::1','localhost'])
+        fail_msg: Use an explicit safe run ID and the correct Local/Remote inventory; audit is already read-only so do not use --check.
+    - name: Create writable controller evidence root
+      ansible.builtin.file:
+        path: '{{ cis_evidence_root }}'
+        state: directory
+        mode: '0750'
+      delegate_to: localhost
+      become: false
+      run_once: true
+    - name: Acquire exclusive workflow lock on controller
+      ansible.builtin.command:
+        argv: [mkdir, '{{ cis_evidence_root }}/.ansible-workflow.lock']
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+    - name: Execute host workflow and retain failures
+      block:
+        - name: Initialise host state
+          ansible.builtin.set_fact:
+            cis_execution_error: ''
+            cis_stage_reports: {}
+            cis_remediation_changed: false
+            cis_bad_keys: []
+        - name: Reserve identity and immutable evidence on controller
+          ansible.builtin.include_tasks: tasks/identity.yml
+        - name: Gather target facts with explicit unreachable outcome
+          ansible.builtin.setup:
+          register: cis_setup
+          ignore_errors: true
+        - name: Require reachable supported target
+          ansible.builtin.assert:
+            that:
+              - not cis_setup.unreachable | default(false)
+              - not cis_setup.failed | default(false)
+              - ansible_facts.distribution | default('') == 'Ubuntu'
+              - ansible_facts.distribution_release | default('') in ['noble','resolute']
+            fail_msg: Target unreachable, privilege escalation failed, or unsupported Ubuntu.
+        - name: Audit before for full workflow or explicit before action
+          ansible.builtin.include_tasks: tasks/audit-stage.yml
+          vars: {cis_stage: before}
+          when: cis_action == 'run' or (cis_action == 'audit' and cis_audit_stage == 'before')
+        - name: Require valid before and apply declared section configuration
+          ansible.builtin.include_tasks: tasks/remediate.yml
+          when: cis_action in ['run','remediate']
+        - name: Audit after for full workflow or explicit after action
+          ansible.builtin.include_tasks: tasks/audit-stage.yml
+          vars: {cis_stage: after}
+          when: cis_action == 'run' or (cis_action == 'audit' and cis_audit_stage == 'after')
+        - name: Verify actual second application is idempotent
+          ansible.builtin.include_tasks: tasks/idempotence.yml
+          when: cis_action == 'run' and cis_idempotence | bool and cis_execution_error | length == 0
+      rescue:
+        - name: Record host execution failure without fabricating control rows
+          ansible.builtin.set_fact:
+            cis_execution_error: '{{ ansible_failed_result.msg | default("Workflow execution failed") }}'
+      always:
+        - name: Save controller host summary
+          ansible.builtin.include_tasks: tasks/host-summary.yml
+    - name: Write aggregate summary and host comparison on controller
+      ansible.builtin.template:
+        src: '../templates/{{ item.src }}'
+        dest: '{{ cis_evidence_base }}/{{ item.dest }}'
+        mode: '0640'
+      loop:
+        - {src: summary.json.j2, dest: summary.json}
+        - {src: hosts.csv.j2, dest: hosts.csv}
+        - {src: comparison.csv.j2, dest: comparison.csv}
+      delegate_to: localhost
+      become: false
+      run_once: true
+    - name: Release workflow lock
+      ansible.builtin.file:
+        path: '{{ cis_evidence_root }}/.ansible-workflow.lock'
+        state: absent
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+    - name: Display final evidence location and host outcomes
+      ansible.builtin.debug:
+        msg: '{{ inventory_hostname }}: {{ cis_host_summary.outcome }}; {{ cis_host_evidence }}/summary.json'
+    - name: Return nonzero when compliance or execution is incomplete
+      ansible.builtin.assert:
+        that: cis_host_summary.outcome in ['PASS','REMEDIATED_NOT_REAUDITED']
+        fail_msg: 'Review summary.json and per-stage evidence. Ansible exit codes differ from the removed cisctl CLI.'

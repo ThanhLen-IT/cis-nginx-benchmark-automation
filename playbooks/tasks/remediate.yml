@@ -1,0 +1,51 @@
+---
+- name: Read matching before evidence on controller
+  ansible.builtin.slurp:
+    src: '{{ cis_host_evidence }}/before/audit.json'
+  register: cis_before_file
+  delegate_to: localhost
+  become: false
+- name: Validate before identity scope and absence of execution ERROR
+  ansible.builtin.set_fact:
+    cis_before: '{{ cis_before_file.content | b64decode | from_json }}'
+- name: Block changes unless a matching live before audit is valid
+  ansible.builtin.assert:
+    that:
+      - cis_before.source == 'live'
+      - cis_before.implementation == 'ansible-native'
+      - cis_before.run_id == cis_run_id
+      - cis_before.inventory_alias == inventory_hostname
+      - cis_before.hostname == ansible_facts.hostname
+      - cis_before.sections == cis_audit_sections
+      - cis_before.stage == 'before'
+      - cis_before.counts.ERROR | int == 0
+      - cis_before.results | length == cis_before.counts.PASS + cis_before.counts.FAIL + cis_before.counts.ERROR + cis_before.counts.REVIEW
+- name: Keep before in current summary for split commands
+  ansible.builtin.set_fact:
+    cis_stage_reports: '{{ cis_stage_reports | combine({"before": cis_before}) }}'
+- name: Reserve remediation stage on controller without overwriting
+  ansible.builtin.command:
+    argv: [mkdir, '{{ cis_host_evidence }}/remediation']
+  delegate_to: localhost
+  become: false
+  changed_when: false
+- name: Apply desired configuration and retain failure evidence
+  block:
+    - name: Apply section policy through existing remediation role
+      ansible.builtin.include_role:
+        name: nginx_cis
+    - name: Flush change tracking after all role tasks
+      ansible.builtin.meta: flush_handlers
+  rescue:
+    - name: Record remediation failure and permit diagnostic re-audit
+      ansible.builtin.set_fact:
+        cis_execution_error: '{{ ansible_failed_result.msg | default("Remediation failed") }}'
+  always:
+    - name: Write remediation outcome on controller
+      ansible.builtin.copy:
+        dest: '{{ cis_host_evidence }}/remediation/result.json'
+        content: '{{ {"error": cis_execution_error, "changed": cis_remediation_changed} | to_nice_json }}
+'
+        mode: '0640'
+      delegate_to: localhost
+      become: false

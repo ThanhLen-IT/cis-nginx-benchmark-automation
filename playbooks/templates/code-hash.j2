@@ -1,0 +1,7 @@
+{%- set ns = namespace(parts=[]) -%}
+{%- for pattern in ['../roles/*/tasks/*.yml','../roles/*/handlers/*.yml','../roles/*/defaults/*.yml','../roles/*/vars/*.yml','../roles/*/templates/*.j2','../playbooks/*.yml','../playbooks/tasks/*.yml','../playbooks/templates/*.j2','../config/workflow.yml','../site.yml','../ansible.cfg'] -%}
+{%- for path in query('ansible.builtin.fileglob', playbook_dir ~ '/' ~ pattern) | sort -%}
+{%- set ns.parts = ns.parts + [path | basename, lookup('ansible.builtin.file',path)] -%}
+{%- endfor -%}
+{%- endfor -%}
+{{- ns.parts | to_json | hash('sha256') -}}

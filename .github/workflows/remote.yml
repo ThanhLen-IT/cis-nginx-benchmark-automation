@@ -1,0 +1,63 @@
+name: Ansible-native real SSH validation
+on:
+  push:
+    branches: [main, feat/ansible-native]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  ssh-workflow:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - run: pip install -r requirements.txt
+      - run: sudo apt-get update && sudo apt-get install -y openssh-server nginx curl openssl iproute2 sudo
+      - name: Start and verify baseline before live audit
+        run: |
+          sudo systemctl enable --now nginx
+          sudo nginx -t
+          curl --noproxy '*' -fsSI http://127.0.0.1/
+      - name: Prepare disposable SSH target on this runner
+        shell: bash
+        run: |
+          sudo systemctl start ssh
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          ssh-keygen -q -t ed25519 -N '' -f "$RUNNER_TEMP/cis-key"
+          cat "$RUNNER_TEMP/cis-key.pub" >> "$HOME/.ssh/authorized_keys"
+          chmod 600 "$HOME/.ssh/authorized_keys"
+          CIS_SSH_IP=$(hostname -I | awk '{print $1}')
+          ssh-keyscan -H "$CIS_SSH_IP" >> "$HOME/.ssh/known_hosts"
+          cat > "$RUNNER_TEMP/hosts.yml" <<EOF
+          all:
+            children:
+              nginx_servers:
+                vars:
+                  ansible_connection: ssh
+                  ansible_user: $(id -un)
+                  ansible_ssh_private_key_file: $RUNNER_TEMP/cis-key
+                  ansible_python_interpreter: /usr/bin/python3
+                hosts:
+                  ci-live:
+                    ansible_host: $CIS_SSH_IP
+                  ci-unreachable:
+                    ansible_host: $CIS_SSH_IP
+                    ansible_port: 1
+                    ansible_ssh_timeout: 2
+          EOF
+      - name: Verify successful SSH host survives alongside unreachable host
+        shell: bash
+        run: |
+          set +e
+          ansible-playbook -i "$RUNNER_TEMP/hosts.yml" playbooks/remote.yml -e cis_run_id=ci-native-ssh -e cis_action=run -e cis_idempotence=true
+          CIS_REMOTE_RC=$?
+          set -e
+          test "$CIS_REMOTE_RC" -ne 0
+          ansible-playbook tests/verify-remote.yml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-ssh-evidence
+          path: evidence/

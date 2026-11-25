@@ -1,0 +1,117 @@
+cis_fixture: true
+cis_audit_sections:
+- 1
+- 2
+- 3
+- 4
+- 5
+cis_stage: before
+cis_run_id: fixture
+cis_host_evidence: '{{ playbook_dir }}/../evidence/fixture/fixture-host'
+cis_nginx_t:
+  stdout: "# configuration file /etc/nginx/nginx.conf:\nuser nginx;\npid /run/nginx.pid;\nerror_log /var/log/nginx/error.log\
+    \ info;\nevents { worker_connections 1024; }\nhttp {\n server_tokens off;\n keepalive_timeout 10s;\n send_timeout 10s;\n\
+    \ client_header_timeout 10s;\n client_body_timeout 10s;\n client_max_body_size 2M;\n large_client_header_buffers 4 8k;\n\
+    \ add_header X-Content-Type-Options \"nosniff\" always;\n add_header Referrer-Policy \"strict-origin-when-cross-origin\"\
+    \ always;\n log_format cis_json escape=json '{\"timestamp\":\"$time_iso8601\",\"remote_addr\":\"$remote_addr\",\"remote_user\"\
+    :\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\",\"request\":\"$request\"}';\n access_log /var/log/nginx/access.json\
+    \ cis_json;\n ssl_protocols TLSv1.3;\n server { listen 80 default_server; server_name _; return 444; }\n server { listen\
+    \ 443 ssl default_server; server_name _; ssl_reject_handshake on; }\n server { listen 80; server_name cis.local; return\
+    \ 301 https://cis.local$request_uri; }\n server {\n  listen 443 ssl;\n  server_name cis.local;\n  ssl_certificate /etc/nginx/ssl/cis-lab.crt;\n\
+    \  ssl_certificate_key /etc/nginx/ssl/cis-lab.key;\n  error_page 404 /404.html;\n  location ~ /\\.(?!well-known(?:/|$))\
+    \ { deny all; }\n  location / { try_files $uri $uri/ =404; }\n }\n}\n"
+  rc: 0
+  stderr: ''
+cis_nginx_v:
+  stdout: ''
+  rc: 0
+  stderr: nginx/1.28.0
+cis_apt:
+  stdout: 'Installed: 1.28.0
+
+    Candidate: 1.28.0
+
+    500 https://nginx.org/packages/ubuntu noble/nginx amd64 Packages'
+  rc: 0
+  stderr: ''
+cis_sockets:
+  stdout: 'LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:(("nginx",pid=1,fd=1))
+
+    LISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:(("nginx",pid=1,fd=2))'
+  rc: 0
+  stderr: ''
+cis_owners:
+  stdout: ''
+  rc: 0
+  stderr: ''
+cis_modes:
+  stdout: ''
+  rc: 0
+  stderr: ''
+cis_account:
+  uid:
+    stdout: '101'
+    rc: 0
+    stderr: ''
+  groups:
+    stdout: nginx
+    rc: 0
+    stderr: ''
+  sudo:
+    stdout: ''
+    rc: 1
+    stderr: User nginx is not allowed to run sudo
+  password:
+    stdout: nginx L 2026-01-01 0 99999 7 -1
+    rc: 0
+    stderr: ''
+  passwd:
+    stdout: nginx:x:101:101::/nonexistent:/usr/sbin/nologin
+    rc: 0
+    stderr: ''
+cis_pid:
+  stat:
+    exists: true
+    uid: 0
+    gid: 0
+    mode: '0644'
+cis_key_paths:
+- /etc/nginx/ssl/cis-lab.key
+cis_keys:
+  results: []
+cis_bad_keys: []
+cis_tls13:
+  stdout: ''
+  rc: 0
+  stderr: 'Protocol version: TLSv1.3'
+cis_tls12:
+  stdout: ''
+  rc: 1
+  stderr: alert protocol version
+cis_probe_results:
+  root:
+    stdout: "HTTP/1.1 200 OK\r\nServer: nginx\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nX-Content-Type-Options:\
+      \ nosniff\r\n\r\nLab service"
+    rc: 0
+    stderr: ''
+  not_found:
+    stdout: "HTTP/1.1 404 Not Found\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nX-Content-Type-Options: nosniff\r\
+      \n\r\nNot found"
+    rc: 0
+    stderr: ''
+  hidden:
+    stdout: "HTTP/1.1 403 Forbidden\r\n\r\nDenied"
+    rc: 0
+    stderr: ''
+  http:
+    stdout: "HTTP/1.1 301 Moved\r\nLocation: https://cis.local/\r\n\r\n"
+    rc: 0
+    stderr: ''
+  invalid_http:
+    stdout: ''
+    rc: 52
+    stderr: ''
+  invalid_tls:
+    stdout: ''
+    rc: 35
+    stderr: ''

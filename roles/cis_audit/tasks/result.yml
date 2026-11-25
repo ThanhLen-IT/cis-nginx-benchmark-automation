@@ -1,0 +1,14 @@
+---
+- name: Set status with execution errors taking priority
+  ansible.builtin.set_fact:
+    cis_control_error: "{{ cis_check.error | bool or (cis_check.section != 1 and cis_version | length > 0 and cis_nginx_t.rc != 0) }}"
+    cis_control_review: "{{ cis_check.review | bool or (cis_check.section != 1 and cis_parsed.errors | length > 0) }}"
+- name: Append traceable control row
+  ansible.builtin.set_fact:
+    cis_results: >-
+      {{ cis_results + [{'cis_id': cis_check.cis_id, 'group': cis_check.section,
+        'control': cis_check.control,
+        'status': ('ERROR' if cis_control_error else ('FAIL' if cis_check.section != 1 and cis_version | length == 0 else
+          ('REVIEW' if cis_control_review else ('PASS' if cis_check.passed | bool else 'FAIL')))),
+        'detail': ('Execution failed; inspect raw evidence. ' if cis_control_error else '') ~ cis_check.detail,
+        'evidence': 'raw/collected.json'}] }}

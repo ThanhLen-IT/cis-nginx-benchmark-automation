@@ -1,51 +1,55 @@
----
-- name: Require the supported local lab environment
+- name: Require the supported lab environment and explicit transport
   ansible.builtin.assert:
     that:
-      - ansible_facts.distribution == 'Ubuntu'
-      - ansible_facts.distribution_release in ['noble', 'resolute']
-      - ansible_connection == 'local'
-      - nginx_cis_sections | length > 0
-      - nginx_cis_sections | difference([1, 2, 3, 4, 5]) | length == 0
-      - nginx_cis_server_names | length > 0
-      - nginx_cis_primary_name in nginx_cis_server_names
-      - nginx_cis_server_names | select('match', '^[A-Za-z0-9_.-]+$') | list | length == nginx_cis_server_names | length
-      - nginx_cis_web_root is match('^/var/www/[A-Za-z0-9_/-]+$')
-      - nginx_cis_tls_private_key is match('^/etc/nginx/[A-Za-z0-9_./-]+$')
-      - nginx_cis_tls_certificate is match('^/etc/nginx/[A-Za-z0-9_./-]+$')
-      - nginx_cis_private_ip is match('^[0-9.]+$')
-      - nginx_cis_backup_dir is match('^/var/backups/nginx-cis/[A-Za-z0-9_.-]+$')
-    fail_msg: "Use a dedicated Ubuntu 24.04/26.04 local lab VM. Remote is a placeholder."
+    - ansible_facts.distribution == 'Ubuntu'
+    - ansible_facts.distribution_release in ['noble', 'resolute']
+    - (nginx_cis_execution_mode == 'local' and ansible_connection == 'local') or (nginx_cis_execution_mode == 'remote'
+      and ansible_connection == 'ssh')
+    - nginx_cis_sections | length > 0
+    - nginx_cis_sections | difference([1, 2, 3, 4, 5]) | length == 0
+    - nginx_cis_server_names | length > 0
+    - nginx_cis_primary_name in nginx_cis_server_names
+    - nginx_cis_server_names | select('match', '^[A-Za-z0-9_.-]+$') | list | length == nginx_cis_server_names |
+      length
+    - nginx_cis_web_root is match('^/var/www/[A-Za-z0-9_/-]+$')
+    - nginx_cis_tls_private_key is match('^/etc/nginx/[A-Za-z0-9_./-]+$')
+    - nginx_cis_tls_certificate is match('^/etc/nginx/[A-Za-z0-9_./-]+$')
+    - nginx_cis_private_ip is match('^[0-9.]+$')
+    - nginx_cis_backup_dir is match('^/var/backups/nginx-cis/[A-Za-z0-9_.-]+$')
+    fail_msg: Use a dedicated Ubuntu 24.04/26.04 lab; select the local or SSH entry point explicitly.
 - name: Check saved profile
   ansible.builtin.stat:
-    path: "{{ nginx_cis_profile_path }}"
+    path: '{{ nginx_cis_profile_path }}'
   register: cis_profile_stat
 - name: Read saved profile
   ansible.builtin.slurp:
-    src: "{{ nginx_cis_profile_path }}"
+    src: '{{ nginx_cis_profile_path }}'
   register: cis_profile_data
   when: cis_profile_stat.stat.exists
 - name: Merge enabled sections without reverting earlier work
   ansible.builtin.set_fact:
-    nginx_cis_enabled: "{{ ((cis_profile_data.content | b64decode | from_json) if cis_profile_stat.stat.exists else []) | union(nginx_cis_sections) | sort }}"
+    nginx_cis_enabled: '{{ ((cis_profile_data.content | b64decode | from_json) if cis_profile_stat.stat.exists else
+      []) | union(nginx_cis_sections) | sort }}'
 - name: Validate persisted section identifiers
   ansible.builtin.assert:
     that:
-      - nginx_cis_enabled | difference([1, 2, 3, 4, 5]) | length == 0
+    - nginx_cis_enabled | difference([1, 2, 3, 4, 5]) | length == 0
 - name: Create state and backup directories
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: '{{ item }}'
     state: directory
     owner: root
     group: root
-    mode: "0700"
+    mode: '0700'
   loop:
-    - /var/lib/nginx-cis
-    - /var/backups/nginx-cis
-    - "{{ nginx_cis_backup_dir }}"
+  - /var/lib/nginx-cis
+  - /var/backups/nginx-cis
+  - '{{ nginx_cis_backup_dir }}'
+  notify:
+  - Record remediation change
 - name: Check whether initial state was already recorded
   ansible.builtin.stat:
-    path: "{{ nginx_cis_backup_dir }}/initial-state.json"
+    path: '{{ nginx_cis_backup_dir }}/initial-state.json'
   register: cis_backup_marker
 - name: Check existing NGINX configuration
   ansible.builtin.stat:
@@ -53,14 +57,26 @@
   register: cis_original_config
 - name: Preserve configuration before this run
   ansible.builtin.command:
-    argv: [tar, -czf, "{{ nginx_cis_backup_dir }}/etc-nginx.tar.gz", -C, /etc, nginx]
-    creates: "{{ nginx_cis_backup_dir }}/etc-nginx.tar.gz"
+    argv:
+    - tar
+    - -czf
+    - '{{ nginx_cis_backup_dir }}/etc-nginx.tar.gz'
+    - -C
+    - /etc
+    - nginx
+    creates: '{{ nginx_cis_backup_dir }}/etc-nginx.tar.gz'
   when: cis_original_config.stat.exists and not cis_backup_marker.stat.exists
+  notify:
+  - Record remediation change
 - name: Record original configuration presence once per run
   ansible.builtin.copy:
-    dest: "{{ nginx_cis_backup_dir }}/initial-state.json"
-    content: "{{ {'configuration_existed': cis_original_config.stat.exists} | to_nice_json }}\n"
+    dest: '{{ nginx_cis_backup_dir }}/initial-state.json'
+    content: '{{ {''configuration_existed'': cis_original_config.stat.exists} | to_nice_json }}
+
+      '
     owner: root
     group: root
-    mode: "0600"
+    mode: '0600'
     force: false
+  notify:
+  - Record remediation change

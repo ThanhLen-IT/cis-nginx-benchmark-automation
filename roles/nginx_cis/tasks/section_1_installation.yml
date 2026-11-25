@@ -1,23 +1,40 @@
----
 - name: CIS 1.2.1 install signing prerequisites
   ansible.builtin.apt:
-    name: [ca-certificates, gnupg, ubuntu-keyring, curl, openssl, iproute2]
+    name:
+    - ca-certificates
+    - gnupg
+    - ubuntu-keyring
+    - curl
+    - openssl
+    - iproute2
     state: present
     update_cache: true
     cache_valid_time: 3600
+  notify:
+  - Record remediation change
 - name: CIS 1.2.1 fetch official key
   ansible.builtin.get_url:
     url: https://nginx.org/keys/nginx_signing.key
     dest: /var/lib/nginx-cis/nginx_signing.key
-    mode: "0644"
+    mode: '0644'
+  notify:
+  - Record remediation change
 - name: CIS 1.2.1 inspect downloaded key before trusting it
   ansible.builtin.command:
-    argv: [gpg, --batch, --with-colons, --show-keys, /var/lib/nginx-cis/nginx_signing.key]
+    argv:
+    - gpg
+    - --batch
+    - --with-colons
+    - --show-keys
+    - /var/lib/nginx-cis/nginx_signing.key
   register: cis_key
   changed_when: false
+  notify:
+  - Record remediation change
 - name: CIS 1.2.1 verify official fingerprint
   ansible.builtin.assert:
-    that: [nginx_cis_signing_fingerprint in cis_key.stdout]
+    that:
+    - nginx_cis_signing_fingerprint in cis_key.stdout
 - name: CIS 1.2.1 install ASCII armored APT key
   ansible.builtin.copy:
     src: /var/lib/nginx-cis/nginx_signing.key
@@ -25,40 +42,63 @@
     remote_src: true
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
+  notify:
+  - Record remediation change
 - name: CIS 1.2.1 configure signed official stable repository
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/nginx-cis.list
-    content: "deb [signed-by=/usr/share/keyrings/nginx-cis.asc] https://nginx.org/packages/ubuntu {{ ansible_facts.distribution_release }} nginx\n"
+    content: 'deb [signed-by=/usr/share/keyrings/nginx-cis.asc] https://nginx.org/packages/ubuntu {{ ansible_facts.distribution_release
+      }} nginx
+
+      '
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
   register: cis_repository
+  notify:
+  - Record remediation change
 - name: CIS 1.2.1 remove old project repository to avoid Signed-By conflicts
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/nginx.list
     state: absent
+  notify:
+  - Record remediation change
 - name: CIS 1.2.1 prefer official repository
   ansible.builtin.copy:
     dest: /etc/apt/preferences.d/99nginx
-    content: "Package: nginx*\nPin: origin nginx.org\nPin-Priority: 900\n"
+    content: 'Package: nginx*
+
+      Pin: origin nginx.org
+
+      Pin-Priority: 900
+
+      '
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
+  notify:
+  - Record remediation change
 - name: CIS 1.2.2 refresh package metadata
   ansible.builtin.apt:
     update_cache: true
-    cache_valid_time: "{{ 0 if cis_repository.changed else 3600 }}"
+    cache_valid_time: '{{ 0 if cis_repository.changed else 3600 }}'
+  notify:
+  - Record remediation change
 - name: CIS 1.1.1 and 1.2.2 install latest candidate
   ansible.builtin.apt:
     name: nginx
     state: latest
     policy_rc_d: 101
+  notify:
+  - Record remediation change
 - name: CIS 1.1.1 get binary version
   ansible.builtin.command: nginx -v
   register: cis_version
   changed_when: false
+  notify:
+  - Record remediation change
 - name: CIS 1.1.1 enforce minimum version
   ansible.builtin.assert:
     that:
-      - (cis_version.stderr | regex_search('[0-9]+[.][0-9]+[.][0-9]+')) is version(nginx_cis_minimum_version, '>=')
+    - (cis_version.stderr | regex_search('[0-9]+[.][0-9]+[.][0-9]+')) is version(nginx_cis_minimum_version, '>=')

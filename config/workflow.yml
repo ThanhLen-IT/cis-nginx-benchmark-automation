@@ -1,0 +1,8 @@
+---
+cis_action: audit
+cis_audit_stage: before
+cis_section: all
+cis_run_id: ''
+cis_idempotence: false
+cis_mode: local
+cis_evidence_root: '{{ playbook_dir }}/../evidence'

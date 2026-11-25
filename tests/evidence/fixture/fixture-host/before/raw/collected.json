@@ -1,0 +1,823 @@
+{
+    "account": {
+        "groups": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "nginx"
+        },
+        "passwd": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "nginx:x:101:101::/nonexistent:/usr/sbin/nologin"
+        },
+        "password": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "nginx L 2026-01-01 0 99999 7 -1"
+        },
+        "sudo": {
+            "rc": 1,
+            "stderr": "User nginx is not allowed to run sudo",
+            "stdout": ""
+        },
+        "uid": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "101"
+        }
+    },
+    "apt_policy": {
+        "rc": 0,
+        "stderr": "",
+        "stdout": "Installed: 1.28.0\nCandidate: 1.28.0\n500 https://nginx.org/packages/ubuntu noble/nginx amd64 Packages"
+    },
+    "keys": {
+        "results": []
+    },
+    "modes": {
+        "rc": 0,
+        "stderr": "",
+        "stdout": ""
+    },
+    "nginx_T": {
+        "rc": 0,
+        "stderr": "",
+        "stdout": "# configuration file /etc/nginx/nginx.conf:\nuser nginx;\npid /run/nginx.pid;\nerror_log /var/log/nginx/error.log info;\nevents { worker_connections 1024; }\nhttp {\n server_tokens off;\n keepalive_timeout 10s;\n send_timeout 10s;\n client_header_timeout 10s;\n client_body_timeout 10s;\n client_max_body_size 2M;\n large_client_header_buffers 4 8k;\n add_header X-Content-Type-Options \"nosniff\" always;\n add_header Referrer-Policy \"strict-origin-when-cross-origin\" always;\n log_format cis_json escape=json '{\"timestamp\":\"$time_iso8601\",\"remote_addr\":\"$remote_addr\",\"remote_user\":\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\",\"request\":\"$request\"}';\n access_log /var/log/nginx/access.json cis_json;\n ssl_protocols TLSv1.3;\n server { listen 80 default_server; server_name _; return 444; }\n server { listen 443 ssl default_server; server_name _; ssl_reject_handshake on; }\n server { listen 80; server_name cis.local; return 301 https://cis.local$request_uri; }\n server {\n  listen 443 ssl;\n  server_name cis.local;\n  ssl_certificate /etc/nginx/ssl/cis-lab.crt;\n  ssl_certificate_key /etc/nginx/ssl/cis-lab.key;\n  error_page 404 /404.html;\n  location ~ /\\.(?!well-known(?:/|$)) { deny all; }\n  location / { try_files $uri $uri/ =404; }\n }\n}\n"
+    },
+    "nginx_V": {
+        "rc": 0,
+        "stderr": "nginx/1.28.0",
+        "stdout": ""
+    },
+    "owners": {
+        "rc": 0,
+        "stderr": "",
+        "stdout": ""
+    },
+    "parsed": {
+        "blocks": [
+            {
+                "block": {
+                    "args": [],
+                    "id": "/etc/nginx/nginx.conf:1",
+                    "name": "events"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:1",
+                        "name": "events"
+                    }
+                ]
+            },
+            {
+                "block": {
+                    "args": [],
+                    "id": "/etc/nginx/nginx.conf:2",
+                    "name": "http"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ]
+            },
+            {
+                "block": {
+                    "args": [],
+                    "id": "/etc/nginx/nginx.conf:3",
+                    "name": "server"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:3",
+                        "name": "server"
+                    }
+                ]
+            },
+            {
+                "block": {
+                    "args": [],
+                    "id": "/etc/nginx/nginx.conf:4",
+                    "name": "server"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:4",
+                        "name": "server"
+                    }
+                ]
+            },
+            {
+                "block": {
+                    "args": [],
+                    "id": "/etc/nginx/nginx.conf:5",
+                    "name": "server"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:5",
+                        "name": "server"
+                    }
+                ]
+            },
+            {
+                "block": {
+                    "args": [],
+                    "id": "/etc/nginx/nginx.conf:6",
+                    "name": "server"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    }
+                ]
+            },
+            {
+                "block": {
+                    "args": [
+                        "~",
+                        "/\\.(?!well-known(?:/|$))"
+                    ],
+                    "id": "/etc/nginx/nginx.conf:7",
+                    "name": "location"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    },
+                    {
+                        "args": [
+                            "~",
+                            "/\\.(?!well-known(?:/|$))"
+                        ],
+                        "id": "/etc/nginx/nginx.conf:7",
+                        "name": "location"
+                    }
+                ]
+            },
+            {
+                "block": {
+                    "args": [
+                        "/"
+                    ],
+                    "id": "/etc/nginx/nginx.conf:8",
+                    "name": "location"
+                },
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    },
+                    {
+                        "args": [
+                            "/"
+                        ],
+                        "id": "/etc/nginx/nginx.conf:8",
+                        "name": "location"
+                    }
+                ]
+            }
+        ],
+        "directives": [
+            {
+                "args": [
+                    "nginx"
+                ],
+                "context": [],
+                "name": "user",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "/run/nginx.pid"
+                ],
+                "context": [],
+                "name": "pid",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "/var/log/nginx/error.log",
+                    "info"
+                ],
+                "context": [],
+                "name": "error_log",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "1024"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:1",
+                        "name": "events"
+                    }
+                ],
+                "name": "worker_connections",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "off"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "server_tokens",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "10s"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "keepalive_timeout",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "10s"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "send_timeout",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "10s"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "client_header_timeout",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "10s"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "client_body_timeout",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "2M"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "client_max_body_size",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "4",
+                    "8k"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "large_client_header_buffers",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "X-Content-Type-Options",
+                    "nosniff",
+                    "always"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "add_header",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "Referrer-Policy",
+                    "strict-origin-when-cross-origin",
+                    "always"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "add_header",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "cis_json",
+                    "escape=json",
+                    "{\"timestamp\":\"$time_iso8601\",\"remote_addr\":\"$remote_addr\",\"remote_user\":\"$remote_user\",\"status\":$status,\"user_agent\":\"$http_user_agent\",\"request\":\"$request\"}"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "log_format",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "/var/log/nginx/access.json",
+                    "cis_json"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "access_log",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "TLSv1.3"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    }
+                ],
+                "name": "ssl_protocols",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "80",
+                    "default_server"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:3",
+                        "name": "server"
+                    }
+                ],
+                "name": "listen",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "_"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:3",
+                        "name": "server"
+                    }
+                ],
+                "name": "server_name",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "444"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:3",
+                        "name": "server"
+                    }
+                ],
+                "name": "return",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "443",
+                    "ssl",
+                    "default_server"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:4",
+                        "name": "server"
+                    }
+                ],
+                "name": "listen",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "_"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:4",
+                        "name": "server"
+                    }
+                ],
+                "name": "server_name",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "on"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:4",
+                        "name": "server"
+                    }
+                ],
+                "name": "ssl_reject_handshake",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "80"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:5",
+                        "name": "server"
+                    }
+                ],
+                "name": "listen",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "cis.local"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:5",
+                        "name": "server"
+                    }
+                ],
+                "name": "server_name",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "301",
+                    "https://cis.local$request_uri"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:5",
+                        "name": "server"
+                    }
+                ],
+                "name": "return",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "443",
+                    "ssl"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    }
+                ],
+                "name": "listen",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "cis.local"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    }
+                ],
+                "name": "server_name",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "/etc/nginx/ssl/cis-lab.crt"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    }
+                ],
+                "name": "ssl_certificate",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "/etc/nginx/ssl/cis-lab.key"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    }
+                ],
+                "name": "ssl_certificate_key",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "404",
+                    "/404.html"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    }
+                ],
+                "name": "error_page",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "all"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    },
+                    {
+                        "args": [
+                            "~",
+                            "/\\.(?!well-known(?:/|$))"
+                        ],
+                        "id": "/etc/nginx/nginx.conf:7",
+                        "name": "location"
+                    }
+                ],
+                "name": "deny",
+                "source": "/etc/nginx/nginx.conf"
+            },
+            {
+                "args": [
+                    "$uri",
+                    "$uri/",
+                    "=404"
+                ],
+                "context": [
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:2",
+                        "name": "http"
+                    },
+                    {
+                        "args": [],
+                        "id": "/etc/nginx/nginx.conf:6",
+                        "name": "server"
+                    },
+                    {
+                        "args": [
+                            "/"
+                        ],
+                        "id": "/etc/nginx/nginx.conf:8",
+                        "name": "location"
+                    }
+                ],
+                "name": "try_files",
+                "source": "/etc/nginx/nginx.conf"
+            }
+        ],
+        "errors": []
+    },
+    "pid": {
+        "stat": {
+            "exists": true,
+            "gid": 0,
+            "mode": "0644",
+            "uid": 0
+        }
+    },
+    "probes": {
+        "hidden": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "HTTP/1.1 403 Forbidden\r\n\r\nDenied"
+        },
+        "http": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "HTTP/1.1 301 Moved\r\nLocation: https://cis.local/\r\n\r\n"
+        },
+        "invalid_http": {
+            "rc": 52,
+            "stderr": "",
+            "stdout": ""
+        },
+        "invalid_tls": {
+            "rc": 35,
+            "stderr": "",
+            "stdout": ""
+        },
+        "not_found": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "HTTP/1.1 404 Not Found\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nX-Content-Type-Options: nosniff\r\n\r\nNot found"
+        },
+        "root": {
+            "rc": 0,
+            "stderr": "",
+            "stdout": "HTTP/1.1 200 OK\r\nServer: nginx\r\nReferrer-Policy: strict-origin-when-cross-origin\r\nX-Content-Type-Options: nosniff\r\n\r\nLab service"
+        }
+    },
+    "sockets": {
+        "rc": 0,
+        "stderr": "",
+        "stdout": "LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:((\"nginx\",pid=1,fd=1))\nLISTEN 0 511 0.0.0.0:443 0.0.0.0:* users:((\"nginx\",pid=1,fd=2))"
+    },
+    "tls12": {
+        "rc": 1,
+        "stderr": "alert protocol version",
+        "stdout": ""
+    },
+    "tls13": {
+        "rc": 0,
+        "stderr": "Protocol version: TLSv1.3",
+        "stdout": ""
+    }
+} 

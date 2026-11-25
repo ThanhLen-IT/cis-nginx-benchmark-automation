@@ -1,56 +1,76 @@
----
 - name: Check OpenSSL prerequisite
   ansible.builtin.command: openssl version
   changed_when: false
+  notify:
+  - Record remediation change
 - name: CIS 4.1.3 protect TLS directory
   ansible.builtin.file:
     path: /etc/nginx/ssl
     state: directory
     owner: root
     group: root
-    mode: "0750"
+    mode: '0750'
+  notify:
+  - Record remediation change
 - name: Inspect TLS pair
   ansible.builtin.stat:
-    path: "{{ item }}"
-  loop: ["{{ nginx_cis_tls_private_key }}", "{{ nginx_cis_tls_certificate }}"]
+    path: '{{ item }}'
+  loop:
+  - '{{ nginx_cis_tls_private_key }}'
+  - '{{ nginx_cis_tls_certificate }}'
   register: cis_tls_pair
 - name: Reject partial TLS pairs instead of overwriting private material
   ansible.builtin.assert:
     that:
-      - cis_tls_pair.results[0].stat.exists == cis_tls_pair.results[1].stat.exists
-    fail_msg: "Restore the missing TLS file, or deliberately replace both in this lab."
+    - cis_tls_pair.results[0].stat.exists == cis_tls_pair.results[1].stat.exists
+    fail_msg: Restore the missing TLS file, or deliberately replace both in this lab.
 - name: Generate self-signed lab pair only when neither file exists
   ansible.builtin.command:
     argv:
-      - openssl
-      - req
-      - -x509
-      - -nodes
-      - -newkey
-      - rsa:2048
-      - -sha256
-      - -days
-      - "{{ nginx_cis_tls_certificate_days | string }}"
-      - -subj
-      - "/CN={{ nginx_cis_primary_name }}"
-      - -addext
-      - "subjectAltName=DNS:{{ nginx_cis_primary_name }},DNS:localhost,IP:{{ nginx_cis_private_ip }}"
-      - -keyout
-      - "{{ nginx_cis_tls_private_key }}"
-      - -out
-      - "{{ nginx_cis_tls_certificate }}"
+    - openssl
+    - req
+    - -x509
+    - -nodes
+    - -newkey
+    - rsa:2048
+    - -sha256
+    - -days
+    - '{{ nginx_cis_tls_certificate_days | string }}'
+    - -subj
+    - /CN={{ nginx_cis_primary_name }}
+    - -addext
+    - subjectAltName=DNS:{{ nginx_cis_primary_name }},DNS:localhost,IP:{{ nginx_cis_private_ip }}
+    - -keyout
+    - '{{ nginx_cis_tls_private_key }}'
+    - -out
+    - '{{ nginx_cis_tls_certificate }}'
   when: not cis_tls_pair.results[0].stat.exists
   no_log: true
+  notify:
+  - Record remediation change
 - name: CIS 4.1.3 protect TLS files
   ansible.builtin.file:
-    path: "{{ item.path }}"
+    path: '{{ item.path }}'
     owner: root
     group: root
-    mode: "{{ item.mode }}"
+    mode: '{{ item.mode }}'
   loop:
-    - {path: "{{ nginx_cis_tls_private_key }}", mode: "0400"}
-    - {path: "{{ nginx_cis_tls_certificate }}", mode: "0640"}
+  - path: '{{ nginx_cis_tls_private_key }}'
+    mode: '0400'
+  - path: '{{ nginx_cis_tls_certificate }}'
+    mode: '0640'
+  notify:
+  - Record remediation change
 - name: Verify certificate hostname
   ansible.builtin.command:
-    argv: [openssl, x509, -in, "{{ nginx_cis_tls_certificate }}", -noout, -checkhost, "{{ nginx_cis_primary_name }}"]
+    argv:
+    - openssl
+    - x509
+    - -in
+    - '{{ nginx_cis_tls_certificate }}'
+    - -noout
+    - -checkhost
+    - '{{ nginx_cis_primary_name }}'
   changed_when: false
+  notify:
+  - Record remediation change
