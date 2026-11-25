@@ -253,3 +253,4 @@ evidence/*
 __pycache__/
 *.py[cod]
 config/lab.local.yml
+inventory/hosts-aws.local.yml

@@ -26,7 +26,11 @@ Mỗi lần chạy mới dùng run ID mới; tệp stage có sẵn bị từ ch�
 | TV1 | Installation/Configuration, 17 tiêu chí, giải thích dữ liệu gói và quyền |
 | TV2 | Logging/TLS, 8 tiêu chí, log và handshake |
 | TV3 | Manual, Headers và cơ chế audit 30 tiêu chí |
-| TV4 | Luồng tổng, evidence, tích hợp báo cáo; Remote thực hiện sau |
+| TV4 | Luồng tổng, evidence, tích hợp báo cáo; điều phối lượt Remote |
 
-Remote hiện chỉ có hướng dẫn. Không dùng hình cũ hai node để đại diện cho bốn EC2 chưa kiểm thử.
+Remote có mã và lệnh trong docs/REMOTE.md; nhóm điền IP, chuẩn bị baseline và kiểm thử trước khi quay. Không dùng hình cũ hai node để đại diện cho bốn EC2 chưa kiểm thử.
 Giữ video gốc, log, commit, hostname và thời điểm chạy; thỏa thuận thời lượng/thuyết minh theo yêu cầu giảng viên.
+
+## Lượt Remote khi bốn EC2 đã sẵn sàng
+
+TV4 mở inventory và xác định đúng bốn máy, chạy `./cisctl run --mode remote --inventory inventory/hosts-aws.local.yml --run-id remote-demo-01 --idempotence`. Hiển thị từng host before/remediate/after và recap lần hai; mở summary.json, hosts.csv, comparison.csv. Mỗi thành viên giải thích dữ liệu thuộc phần mình trên cùng lượt chạy. Giữ nguyên lỗi nếu có, không coi host mất kết nối là đã đánh giá 30 tiêu chí. Xem hướng dẫn baseline và điều kiện kết nối trong REMOTE.md.

@@ -11,7 +11,7 @@ Các kiểm tra HTTP nhắm tới website lab được chọn; repo không phả
 
 ## Remediation
 
-`site.yml` gọi role. Preflight kiểm tra Ubuntu 24.04 hoặc 26.04/local và nạp profile. Section 1 chọn codename theo facts (noble/resolute), cấu hình nguồn gói chính thức và nâng cấp NGINX; section 2 quản lý tài khoản/quyền; section 3 log; section 4 vật liệu TLS; section 5 kiểm tra policy request.
+`site.yml` gọi role. Preflight kiểm tra Ubuntu 24.04 hoặc 26.04 và transport đúng chế độ và nạp profile. Section 1 chọn codename theo facts (noble/resolute), cấu hình nguồn gói chính thức và nâng cấp NGINX; section 2 quản lý tài khoản/quyền; section 3 log; section 4 vật liệu TLS; section 5 kiểm tra policy request.
 Template `nginx.conf.j2` là nguồn cấu hình duy nhất được nạp; không include cấu hình website cũ để tránh directive xung đột. Các tệp cũ được giữ và backup, nhưng không còn được include bởi cấu hình lab mới.
 Role render candidate, chạy `nginx -t -c ...` rồi mới copy vào nginx.conf. Hai handler cùng listen một sự kiện: validate chạy trước reload. Profile chỉ được ghi sau triển khai thành công.
 Ansible không đọc CSV để chỉ chạy các dòng FAIL. Module so sánh trạng thái hệ thống với khai báo trong phạm vi/profile đã chọn.
@@ -25,3 +25,9 @@ Idempotence dùng số liệu thật của callback Ansible; không ép changed=
 ## Hướng viết chương 3
 
 Ghi lệnh → đầu ra → nhận xét theo CIS ID. Dùng cùng run ID cho before/after, ghi commit, host và scope. Các mục code/logic thuộc chương 2; bảng Manual theo docs/MANUAL.md. Không điền kết quả PASS giả hoặc dùng fixture test làm kết quả thực nghiệm.
+
+## Remote qua SSH
+
+`runner.py` chuyển chế độ remote sang `scripts/remote.py`; không audit trên controller. Runner đọc inventory, khóa chạy đồng thời, giữ manifest bất biến theo source/inventory/vars/scope/hosts. Với mỗi alias, `remote-audit.yml` chép collector/engine lên máy đích, chạy với become và fetch bằng chứng. Runner xác minh đủ CIS ID, Status/counts và mã trả về thật trước khi khắc phục. `remote-remediate.yml` gọi role chung bằng SSH, còn `site.yml` vẫn chặn SSH để giữ entry point Local.
+
+Host có ERROR hoặc thiếu before không được khắc phục. Lỗi một host không ngăn các host còn lại. Recap được giữ riêng theo giai đoạn; re-audit sau lần chạy lại vẫn chạy kể cả changed > 0. Tổng hợp có expected/missing hosts và không giả tạo dòng tiêu chí khi chưa thu được audit. Chi tiết luồng, CLI và bàn giao tại [REMOTE.md](REMOTE.md).

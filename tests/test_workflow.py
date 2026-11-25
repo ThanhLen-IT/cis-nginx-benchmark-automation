@@ -74,9 +74,12 @@ def test_run_id_cannot_escape_evidence_folder(bad):
         runner.safe_id(bad)
 
 
-def test_remote_placeholder_never_calls_local_workflow(monkeypatch):
+def test_remote_never_calls_local_workflow(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    monkeypatch.setitem(sys.modules, "remote", SimpleNamespace(main=lambda args, root: 17))
     monkeypatch.setattr(runner, "workflow", lambda *a: pytest.fail("must not execute"))
-    assert runner.main(["run", "--mode", "remote"]) == 2
+    assert runner.main(["run", "--mode", "remote"]) == 17
 
 
 def test_mixed_scopes_cannot_be_compared(tmp_path):

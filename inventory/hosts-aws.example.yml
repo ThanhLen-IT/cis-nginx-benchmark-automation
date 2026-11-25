@@ -1,0 +1,29 @@
+---
+# Copy to hosts-aws.local.yml. Fill IP/DNS on the controller; never commit keys.
+all:
+  children:
+    nginx_servers:
+      vars:
+        ansible_connection: ssh
+        ansible_user: ubuntu
+        ansible_python_interpreter: /usr/bin/python3
+        # Use ssh-agent, ~/.ssh/config, or uncomment with a local key path:
+        # ansible_ssh_private_key_file: /home/YOUR_VM_USER/.ssh/YOUR_KEY.pem
+      hosts:
+        nginx01:
+          ansible_host: ""
+          nginx_cis_primary_name: nginx01.cis.local
+          nginx_cis_server_names: [nginx01.cis.local, localhost, 127.0.0.1]
+          # nginx_cis_private_ip: FILL_PRIVATE_IP
+        nginx02:
+          ansible_host: ""
+          nginx_cis_primary_name: nginx02.cis.local
+          nginx_cis_server_names: [nginx02.cis.local, localhost, 127.0.0.1]
+        nginx03:
+          ansible_host: ""
+          nginx_cis_primary_name: nginx03.cis.local
+          nginx_cis_server_names: [nginx03.cis.local, localhost, 127.0.0.1]
+        nginx04:
+          ansible_host: ""
+          nginx_cis_primary_name: nginx04.cis.local
+          nginx_cis_server_names: [nginx04.cis.local, localhost, 127.0.0.1]

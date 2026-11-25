@@ -1,0 +1,88 @@
+---
+- name: Collect live audit on the target and fetch evidence to the controller
+  hosts: nginx_servers
+  become: true
+  gather_facts: true
+  vars:
+    cis_remote_base: "/var/lib/nginx-cis/evidence/{{ cis_run_id }}"
+    cis_remote_stage: "{{ cis_remote_base }}/{{ cis_operation }}"
+    cis_remote_code: "{{ cis_remote_base }}/audit"
+  tasks:
+    - name: Require explicit SSH and supported Ubuntu
+      ansible.builtin.assert:
+        that:
+          - ansible_connection == 'ssh'
+          - ansible_facts.distribution == 'Ubuntu'
+          - ansible_facts.distribution_release in ['noble', 'resolute']
+          - cis_run_id is match('^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$')
+          - cis_operation in ['before', 'after', 'after-idempotence']
+          - cis_stage in ['before', 'after']
+          - cis_section | string in ['all', '1', '2', '3', '4', '5']
+    - name: Check remote evidence is not being overwritten
+      ansible.builtin.stat:
+        path: "{{ cis_remote_stage }}"
+      register: cis_existing_stage
+    - name: Refuse existing target stage
+      ansible.builtin.assert:
+        that: not cis_existing_stage.stat.exists
+        fail_msg: "Remote stage already exists. Use a new run ID; do not delete evidence to rerun."
+    - name: Prepare private collector directory
+      ansible.builtin.file:
+        path: "{{ cis_remote_code }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Transfer the same audit engine used locally
+      ansible.builtin.copy:
+        src: "{{ cis_source_root }}/audit/{{ item }}"
+        dest: "{{ cis_remote_code }}/{{ item }}"
+        owner: root
+        group: root
+        mode: '0600'
+      loop: [collect.py, engine.py]
+    - name: Execute collector on this EC2, never on the controller
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_facts.python.executable }}"
+          - "{{ cis_remote_code }}/collect.py"
+          - --stage
+          - "{{ cis_stage }}"
+          - --section
+          - "{{ cis_section }}"
+          - --output
+          - "{{ cis_remote_stage }}"
+        expand_argument_vars: false
+      register: cis_collector
+      changed_when: false
+      failed_when: false
+    - name: Ensure diagnostic destination exists even if collector failed early
+      ansible.builtin.file:
+        path: "{{ cis_remote_stage }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Save actual collector return code and target identity
+      ansible.builtin.copy:
+        dest: "{{ cis_remote_stage }}/collector-result.json"
+        content: "{{ {'exit_code': cis_collector.rc, 'inventory_alias': inventory_hostname, 'hostname': ansible_facts.hostname, 'os_version': ansible_facts.distribution_version, 'run_id': cis_run_id, 'operation': cis_operation, 'stdout': cis_collector.stdout, 'stderr': cis_collector.stderr} | to_nice_json }}\n"
+        owner: root
+        group: root
+        mode: '0600'
+    - name: Find evidence files only, not keys or system backups
+      ansible.builtin.find:
+        paths: "{{ cis_remote_stage }}"
+        recurse: true
+        file_type: file
+        follow: false
+      register: cis_evidence_files
+    - name: Fetch each file with checksum verification
+      ansible.builtin.fetch:
+        src: "{{ item.path }}"
+        dest: "{{ cis_local_stage }}/{{ item.path | relpath(cis_remote_stage) }}"
+        flat: true
+        validate_checksum: true
+      loop: "{{ cis_evidence_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
