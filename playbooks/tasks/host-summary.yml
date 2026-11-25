@@ -1,7 +1,7 @@
 ---
 - name: Reload completed stages for split invocation summary
   ansible.builtin.set_fact:
-    cis_stage_reports: "{{ cis_stage_reports | default({}) | combine({item: ((lookup('ansible.builtin.file', cis_host_evidence ~ '/' ~ item ~ '/audit.json') | from_json) if query('ansible.builtin.fileglob', cis_host_evidence ~ '/' ~ item ~ '/audit.json') | length else {})}) }}"
+    cis_stage_reports: "{{ cis_stage_reports | default({}) | combine({item: ((lookup('ansible.builtin.file', cis_host_evidence ~ '/' ~ item ~ '/audit.json') | from_json) if (cis_host_evidence ~ '/' ~ item ~ '/audit.json') is file else {})}) }}"
   loop: [before, after, after-idempotence]
 - name: Calculate host outcome without treating an empty report as PASS
   ansible.builtin.set_fact:

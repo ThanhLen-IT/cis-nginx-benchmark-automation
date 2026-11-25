@@ -65,3 +65,11 @@
 - name: Keep stage result for workflow comparison
   ansible.builtin.set_fact:
     cis_stage_reports: '{{ cis_stage_reports | default({}) | combine({cis_stage: cis_audit_report}) }}'
+- name: Display actual stage status counts
+  ansible.builtin.debug:
+    msg: '{{ inventory_hostname }} {{ cis_stage }} {{ cis_audit_report.counts }}'
+- name: Display non-PASS control reasons
+  ansible.builtin.debug:
+    msg: '{{ item.cis_id }} {{ item.status }}: {{ item.detail }}'
+  loop: '{{ cis_results | rejectattr("status","equalto","PASS") | list }}'
+  loop_control: {label: '{{ item.cis_id }}'}
