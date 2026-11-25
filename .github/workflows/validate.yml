@@ -36,6 +36,18 @@ jobs:
           curl --noproxy '*' -fsSI http://127.0.0.1/
       - name: Full native audit remediation re-audit and actual idempotence
         run: ansible-playbook site.yml -e cis_run_id=ci-native-local -e cis_action=run -e cis_idempotence=true
+      - name: Verify split commands keep one manifest and refuse evidence overwrite
+        shell: bash
+        run: |
+          ansible-playbook site.yml -e cis_action=audit -e cis_audit_stage=before -e cis_section=5 -e cis_run_id=ci-split
+          ansible-playbook site.yml -e cis_action=remediate -e cis_section=5 -e cis_run_id=ci-split
+          ansible-playbook site.yml -e cis_action=audit -e cis_audit_stage=after -e cis_section=5 -e cis_run_id=ci-split
+          ansible-playbook tests/verify-split.yml
+          set +e
+          ansible-playbook site.yml -e cis_action=audit -e cis_audit_stage=before -e cis_section=5 -e cis_run_id=ci-split
+          CIS_DUPLICATE_RC=$?
+          set -e
+          test "$CIS_DUPLICATE_RC" -ne 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:

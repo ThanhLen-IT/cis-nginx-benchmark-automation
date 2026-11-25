@@ -1,0 +1,16 @@
+---
+- name: Verify split Local calls preserve identity and comparison
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars:
+    result: '{{ lookup("ansible.builtin.file", playbook_dir ~ "/../evidence/ci-split/nginx-cis-server/summary.json") | from_json }}'
+  tasks:
+    - name: Require actual before after coverage and matching comparisons
+      ansible.builtin.assert:
+        that:
+          - result.outcome == 'PASS'
+          - result.stages.before.counts.PASS == 5
+          - result.stages.after.counts.PASS == 5
+          - result.comparison | length == 5
