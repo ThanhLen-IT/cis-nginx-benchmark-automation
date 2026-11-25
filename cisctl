@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entry point; Ansible and all system changes run on the local lab VM."""
+"""CLI for local and SSH workflows; see docs/REMOTE.md before selecting hosts."""
 import sys
 from pathlib import Path
 

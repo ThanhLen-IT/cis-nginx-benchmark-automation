@@ -1,11 +1,11 @@
 ---
-# REMOTE PLACEHOLDER: intentionally empty. No host and no private key are committed.
-# Read docs/REMOTE.md before filling this file. site.yml currently enforces local.
+# Intentionally empty. Copy hosts-aws.example.yml to hosts-aws.local.yml.
+# Remote code is implemented; real EC2 addresses/connections belong to the group.
 all:
   children:
     nginx_servers:
       hosts: {}
-# Future example (commented):
+# Example (commented):
 #       nginx01:
 #         ansible_host: <PUBLIC_IP_OR_DNS>
 #         ansible_user: ubuntu

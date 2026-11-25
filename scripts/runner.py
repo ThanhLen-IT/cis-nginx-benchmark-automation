@@ -18,7 +18,7 @@ AUDIT_STATUSES = {"PASS", "FAIL", "ERROR", "REVIEW"}
 
 
 def parser():
-    p = argparse.ArgumentParser(description="CIS NGINX: audit / remediate / run (VM local)")
+    p = argparse.ArgumentParser(description="CIS NGINX: audit / remediate / run (local or SSH)")
     p.add_argument("action", choices=["audit", "remediate", "run"])
     p.add_argument("--mode", choices=["local", "remote"], default="local")
     p.add_argument("--section", choices=["all", "1", "2", "3", "4", "5"], default="all")
@@ -27,6 +27,9 @@ def parser():
     p.add_argument("--idempotence", action="store_true", help="Run remediation a second time")
     p.add_argument("--ask-become-pass", action="store_true", help="Prompt sudo once, and Ansible -K")
     p.add_argument("--vars-file", type=Path, help="Additional Ansible YAML vars; see config/lab.example.yml")
+    p.add_argument("--inventory", type=Path, help="Remote inventory YAML/INI file")
+    p.add_argument("--limit", help="Remote: comma-separated exact inventory aliases, e.g. nginx01,nginx02")
+    p.add_argument("--connect-timeout", type=int, default=15, help="SSH connection timeout in seconds")
     return p
 
 
@@ -124,7 +127,10 @@ def workflow(args, folder, audit_cmd, remedy_cmd, run=execute):
 def main(argv=None):
     args = parser().parse_args(argv)
     if args.mode == "remote":
-        print("Remote chưa triển khai. Xem docs/REMOTE.md và inventory/hosts-aws.yml.", file=sys.stderr)
+        from remote import main as remote_main
+        return remote_main(args, ROOT)
+    if args.inventory or args.limit:
+        print("ERROR: --inventory/--limit require --mode remote", file=sys.stderr)
         return 2
     try:
         run_id = safe_id(args.run_id or (dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")

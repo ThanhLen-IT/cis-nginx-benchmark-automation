@@ -1,10 +1,10 @@
 ---
-- name: Require the supported local lab environment
+- name: Require the supported lab environment and explicit transport
   ansible.builtin.assert:
     that:
       - ansible_facts.distribution == 'Ubuntu'
       - ansible_facts.distribution_release in ['noble', 'resolute']
-      - ansible_connection == 'local'
+      - (nginx_cis_execution_mode == 'local' and ansible_connection == 'local') or (nginx_cis_execution_mode == 'remote' and ansible_connection == 'ssh')
       - nginx_cis_sections | length > 0
       - nginx_cis_sections | difference([1, 2, 3, 4, 5]) | length == 0
       - nginx_cis_server_names | length > 0
@@ -15,7 +15,7 @@
       - nginx_cis_tls_certificate is match('^/etc/nginx/[A-Za-z0-9_./-]+$')
       - nginx_cis_private_ip is match('^[0-9.]+$')
       - nginx_cis_backup_dir is match('^/var/backups/nginx-cis/[A-Za-z0-9_.-]+$')
-    fail_msg: "Use a dedicated Ubuntu 24.04/26.04 local lab VM. Remote is a placeholder."
+    fail_msg: "Use a dedicated Ubuntu 24.04/26.04 lab; select the local or SSH entry point explicitly."
 - name: Check saved profile
   ansible.builtin.stat:
     path: "{{ nginx_cis_profile_path }}"

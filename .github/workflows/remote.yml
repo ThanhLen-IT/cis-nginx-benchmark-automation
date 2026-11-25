@@ -1,0 +1,72 @@
+name: Validate SSH workflow
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  ssh-integration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: pip install -r requirements-dev.txt
+      - name: Prepare an ephemeral SSH target on this disposable CI runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-server
+          sudo systemctl start ssh
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keygen -t ed25519 -N '' -f ~/.ssh/cis-ci
+          cat ~/.ssh/cis-ci.pub >> ~/.ssh/authorized_keys
+          chmod 600 ~/.ssh/authorized_keys
+          python3 - <<'PY'
+          import os, pathlib, subprocess, yaml
+          ip = subprocess.check_output(['hostname', '-I'], text=True).split()[0]
+          pub = pathlib.Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()
+          with (pathlib.Path.home()/'.ssh/known_hosts').open('a') as f:
+              f.write(f'{ip} {pub[0]} {pub[1]}\n')
+          common = {'ansible_connection': 'ssh', 'ansible_host': ip, 'ansible_user': os.environ['USER'],
+                    'ansible_ssh_private_key_file': str(pathlib.Path.home()/'.ssh/cis-ci'),
+                    'ansible_python_interpreter': '/usr/bin/python3'}
+          data = {'all': {'children': {'nginx_servers': {'hosts': {
+              'ssh01': common, 'offline01': dict(common, ansible_port=1)}}}}}
+          pathlib.Path('/tmp/cis-ci-inventory.yml').write_text(yaml.safe_dump(data))
+          PY
+      - name: Full live SSH run and idempotence
+        run: |
+          ./cisctl run --mode remote --inventory /tmp/cis-ci-inventory.yml --limit ssh01 --run-id ci-ssh --idempotence
+          python3 - <<'PY'
+          import json, pathlib
+          s = json.loads(pathlib.Path('evidence/ci-ssh/summary.json').read_text())
+          assert s['exit_code'] == 0
+          assert s['hosts']['ssh01']['after']['PASS'] == 30
+          assert s['hosts']['ssh01']['idempotent'] is True
+          assert s['hosts']['ssh01']['after-idempotence']['PASS'] == 30
+          PY
+      - name: Unreachable target stays visible beside a successful host
+        run: |
+          set +e
+          ./cisctl audit --mode remote --inventory /tmp/cis-ci-inventory.yml --run-id ci-ssh-errors --connect-timeout 3
+          rc=$?
+          set -e
+          test "$rc" -eq 2
+          python3 - <<'PY'
+          import json, pathlib
+          s = json.loads(pathlib.Path('evidence/ci-ssh-errors/summary.json').read_text())
+          assert s['hosts']['ssh01']['before']['PASS'] == 30
+          assert s['hosts']['offline01']['exit_code'] == 2
+          assert 'before' not in s['hosts']['offline01']
+          assert s['before']['missing_hosts'] == ['offline01']
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ssh-ci-evidence-not-ec2
+          path: |
+            evidence/ci-ssh/
+            evidence/ci-ssh-errors/

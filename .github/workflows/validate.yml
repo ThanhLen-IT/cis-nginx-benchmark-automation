@@ -17,6 +17,8 @@ jobs:
       - run: python -m compileall -q audit scripts callback_plugins
       - run: bash -n audit/baseline-audit.sh audit/post-hardening-audit.sh
       - run: ansible-playbook -i inventory/hosts.yml site.yml --syntax-check
+      - run: ansible-playbook -i inventory/hosts-aws.yml playbooks/remote-audit.yml --syntax-check
+      - run: ansible-playbook -i inventory/hosts-aws.yml playbooks/remote-remediate.yml --syntax-check
       - run: pytest -q
   ubuntu-vm-integration:
     strategy:
