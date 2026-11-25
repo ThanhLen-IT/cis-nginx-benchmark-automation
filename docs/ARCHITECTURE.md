@@ -69,3 +69,12 @@ Không đọc CSV để chỉ chạy FAIL. Tác vụ mutation có thêm notify `
 Đây là đánh giá phạm vi lab/website được chọn, không phải bộ chứng nhận mọi cấu hình NGINX.
 Nguồn yêu cầu: CIS NGINX Benchmark v3.0.0. API thực thi:
 https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/index.html
+
+## Lưu đồ và mô hình
+
+- [Manual](diagrams/manual.svg)
+- [Local](diagrams/local.svg)
+- [Remote](diagrams/remote.svg)
+- [VM controller và bốn EC2](diagrams/model.svg)
+
+Nguồn .dot cùng thư mục để nhóm chỉnh sửa. Các ảnh minh chứng thực tế vẫn để nhóm bổ sung.

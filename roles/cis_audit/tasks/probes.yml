@@ -54,15 +54,17 @@
     cis_probe_results: "{{ dict(cis_http_raw.results | map(attribute='item.key') | zip(cis_http_raw.results)) }}"
 - name: Test TLS 1.3 handshake without trusting the lab certificate
   ansible.builtin.command:
-    argv: [timeout, '7', openssl, s_client, -brief, -connect, '127.0.0.1:{{ cis_https_port }}', -servername, '{{ cis_target_host }}', -tls1_3]
-    stdin: ''
+    argv: [timeout, '7', openssl, s_client, -brief, -no_ign_eof, -connect, '127.0.0.1:{{ cis_https_port }}', -servername, '{{ cis_target_host }}', -tls1_3]
+    stdin: "\n"
+    stdin_add_newline: false
   register: cis_tls13
   changed_when: false
   failed_when: false
 - name: Test whether TLS 1.2 is rejected
   ansible.builtin.command:
-    argv: [timeout, '7', openssl, s_client, -brief, -connect, '127.0.0.1:{{ cis_https_port }}', -servername, '{{ cis_target_host }}', -tls1_2]
-    stdin: ''
+    argv: [timeout, '7', openssl, s_client, -brief, -no_ign_eof, -connect, '127.0.0.1:{{ cis_https_port }}', -servername, '{{ cis_target_host }}', -tls1_2]
+    stdin: "\n"
+    stdin_add_newline: false
   register: cis_tls12
   changed_when: false
   failed_when: false
